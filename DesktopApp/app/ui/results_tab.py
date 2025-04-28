@@ -35,6 +35,9 @@ class ResultsTab(QWidget):
         self.device_filter = None
         self.model_filter = None
         self.limit = 50
+
+        self.is_updating_ui = False
+        self.is_loading_results = False
         
         # Set up UI
         self.setup_ui()
@@ -212,22 +215,10 @@ class ResultsTab(QWidget):
     def on_tab_selected(self):
         """Handle when this tab is selected"""
         # Refresh devices and models for filters
-        self.results_table.setRowCount(0)
-        loading_item = QTableWidgetItem("Loading devices...")
-        self.results_table.insertRow(0)
-        self.results_table.setSpan(0, 0, 1, 5)
-        self.results_table.setItem(0, 0, loading_item)
+        self.main_window.show_loading("Loading Results...")
         
         QTimer.singleShot(100, self.get_inital)
         
-        # QTimer.singleShot(100, self.refresh_results)
-        # self.api_service.get_devices()
-        # self.api_service.get_models()
-        
-        # # Refresh results
-        # self.refresh_results()
-        
-        # Start refresh timer
         self.refresh_timer.start()
     
     def get_inital(self):
@@ -252,6 +243,10 @@ class ResultsTab(QWidget):
     
     def refresh_results(self):
         """Refresh results based on current filters"""
+        if self.is_loading_results:
+            return
+        
+        self.is_loading_results = True
         # Get filter values
         self.device_filter = self.device_combo.currentData()
         self.model_filter = self.model_combo.currentData()
@@ -262,6 +257,8 @@ class ResultsTab(QWidget):
     
     def update_device_combo(self):
         """Update device filter combo with current devices"""
+        self.is_updating_ui = True
+
         current_device = self.device_combo.currentData()
         
         # Clear and add "All Devices" option
@@ -278,9 +275,11 @@ class ResultsTab(QWidget):
                 if self.device_combo.itemData(i) == current_device:
                     self.device_combo.setCurrentIndex(i)
                     break
+        self.is_updating_ui = False
     
     def update_model_combo(self):
         """Update model filter combo with current models"""
+        self.is_updating_ui = True
         current_model = self.model_combo.currentData()
         
         # Clear and add "All Models" option
@@ -289,7 +288,6 @@ class ResultsTab(QWidget):
         
         # Add models
         for model in self.models:
-            print(self.models)
             self.model_combo.addItem(model['project_name'], model['model_id'])
         
         # Restore previous selection if possible
@@ -298,7 +296,9 @@ class ResultsTab(QWidget):
                 if self.model_combo.itemData(i) == current_model:
                     self.model_combo.setCurrentIndex(i)
                     break
-    
+        
+        self.is_updating_ui = False
+
     def update_results_table(self):
         """Update the results table with current data"""
         self.results_table.setRowCount(0)
@@ -354,7 +354,16 @@ class ResultsTab(QWidget):
     @Slot()
     def on_filter_changed(self):
         """Handle when a filter is changed"""
-        self.refresh_results()
+        if self.is_updating_ui:
+            return
+        
+        if hasattr(self, '_filter_timer') and self._filter_timer.isActive():
+            self._filter_timer.stop()
+    
+        self._filter_timer = QTimer()
+        self._filter_timer.setSingleShot(True)
+        self._filter_timer.timeout.connect(self.refresh_results)
+        self._filter_timer.start(300)  # 300ms delay
     
     # Signal handlers
     
@@ -363,8 +372,13 @@ class ResultsTab(QWidget):
         """Handle API request finished"""
         if 'api/results' in endpoint and success and 'results' in data:
             # Update results
-            self.results = data['results']
-            self.update_results_table()
+            self.is_loading_results = False
+        
+            if success and 'results' in data:
+                # Update results
+                self.results = data['results']
+                self.update_results_table()
+            self.main_window.hide_loading()
         
         elif 'api/devices' in endpoint and success and 'devices' in data:
             # Update devices list for filter

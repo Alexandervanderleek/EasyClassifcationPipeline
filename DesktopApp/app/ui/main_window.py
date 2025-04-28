@@ -129,7 +129,7 @@ class MainWindow(QMainWindow):
     def on_api_request_started(self, endpoint):
         """Handle API request started signal"""
         # Only show loading for certain endpoints or operations
-        if any(x in endpoint for x in ['register', 'create', 'upload', 'delete']):
+        if any(x in endpoint for x in ['register', 'create', 'upload', 'delete', 'health']):
             message = "Processing request..."
             if 'register' in endpoint:
                 message = "Registering device..."
@@ -137,6 +137,8 @@ class MainWindow(QMainWindow):
                 message = "Creating..."
             elif 'upload' in endpoint:
                 message = "Uploading..."
+            elif 'health' in endpoint:
+                message = "Pinging api..."
             self.show_loading(message)
     
     @Slot(int)
@@ -214,7 +216,7 @@ class MainWindow(QMainWindow):
     @Slot(str, bool, object)
     def on_api_request_finished(self, endpoint, success, data):
         """Handle API request finished signal from the ApiService"""
-        if any(x in endpoint for x in ['register', 'create', 'upload', 'delete']):
+        if any(x in endpoint for x in ['register', 'create', 'upload', 'delete', 'health']):
             self.hide_loading()
         # If there was an API connection error, show a meaningful error message
         if not success:

@@ -329,22 +329,7 @@ class SetupTab(QWidget):
         # Show status message
         self.main_window.show_status_message("Testing API connection...", 3000)
         
-        # Create busy indicator
-        progress = QProgressDialog("Connecting to API server...", "Cancel", 0, 0, self)
-        progress.setWindowTitle("Testing Connection")
-        progress.setWindowModality(Qt.WindowModal)
-        progress.setMinimumDuration(0)
-        progress.setValue(0)
-
-        label = progress.findChild(QLabel)
-        if label:
-            print(f"Found label: {label}")
-            label.setText("Uploading model to server...")
-            label.setStyleSheet("color: black; font-size: 12px;")
-        else:
-            print("No label found in progress dialog")
-
-        progress.show()
+        
         
         # Create a single-shot timer for timeout
         timeout_timer = QTimer(self)
@@ -361,9 +346,7 @@ class SetupTab(QWidget):
             self.main_window.api_service.request_finished.disconnect(handle_response)
             # Stop the timeout timer
             timeout_timer.stop()
-            # Close progress dialog
-            progress.close()
-            
+            # Close progress dialog            
             if success:
                 self.main_window.show_info_message(
                     "Connection Successful",
@@ -377,8 +360,6 @@ class SetupTab(QWidget):
             except:
                 pass  # It might already be disconnected
             
-            # Close progress dialog
-            progress.close()
             # Show timeout message
             self.main_window.show_error_message(
                 "Connection Failed",

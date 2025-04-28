@@ -163,7 +163,6 @@ class DeployTab(QWidget):
         if not confirm:
             return
         
-        print("About to deply")
         # Upload the model
         self.api_service.upload_model(tflite_path, metadata_path)
     
@@ -196,27 +195,16 @@ class DeployTab(QWidget):
             self.test_result_label.setText(result_text)
         else:
             self.main_window.show_error_message("Test Error", message)
-    
-    # Signal handlers
-    
+        
     @Slot(str)
     def on_request_started(self, endpoint):
         """Handle API request started signal"""
         print(endpoint)
-        if 'api/models/create' in endpoint and not self.progress_dialog:
-            # Create progress dialog
-            
-            # Process events to update UI
-            QCoreApplication.processEvents()
     
     @Slot(str, bool, object)
     def on_request_finished(self, endpoint, success, data):
         """Handle API request finished signal"""
-        if 'api/models/create' in endpoint and self.progress_dialog:
-            # Close progress dialog
-            self.progress_dialog.close()
-            self.progress_dialog = None
-            
+        if 'api/models/create' in endpoint:            
             if success:
                 # Update deployment status
                 self.deploy_status_label.setText("Deployed")

@@ -93,7 +93,7 @@ class AssignModelDialog(QDialog):
 class DevicesTab(QWidget):
     """Tab for managing connected devices"""
     
-    refresh_triggered = Signal()
+    
     
     def __init__(self, main_window):
         super().__init__()
@@ -115,7 +115,6 @@ class DevicesTab(QWidget):
         self.refresh_timer.setInterval(30000)  # 30 seconds
         
         # Connect signals
-        self.refresh_triggered.connect(self.refresh_devices)
         self.api_service.request_finished.connect(self.on_request_finished)
     
     def setup_ui(self):
@@ -145,7 +144,7 @@ class DevicesTab(QWidget):
         buttons_layout = QHBoxLayout()
         
         self.refresh_button = QPushButton("Refresh")
-        self.refresh_button.clicked.connect(self.refresh_triggered)
+        self.refresh_button.clicked.connect(self.refresh_devices)
         buttons_layout.addWidget(self.refresh_button)
         
         self.register_button = QPushButton("Register New Device")
@@ -183,11 +182,7 @@ class DevicesTab(QWidget):
     def on_tab_selected(self):
         """Handle when this tab is selected"""
         # Show loading indicator
-        self.devices_table.setRowCount(0)
-        loading_item = QTableWidgetItem("Loading devices...")
-        self.devices_table.insertRow(0)
-        self.devices_table.setSpan(0, 0, 1, 5)
-        self.devices_table.setItem(0, 0, loading_item)
+        self.main_window.show_loading("Loading Devices...")
         
         # Refresh devices in a non-blocking way
         QTimer.singleShot(100, self.refresh_devices)
@@ -389,6 +384,7 @@ class DevicesTab(QWidget):
             # Update models list
             self.models = data['models']
             self.update_devices_table()
+            self.main_window.hide_loading()
         
         elif 'api/devices/register' in endpoint and success:
             # Show success message

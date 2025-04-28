@@ -27,8 +27,6 @@ class ApiService(QObject):
         self.session = requests.Session()
         self.thread_manager = ThreadManager()
 
-        self.cache = {}
-        self.cache_expiry = 30  # seconds
 
         # Error handling flags
         self.connection_error = False
@@ -110,12 +108,7 @@ class ApiService(QObject):
             # Parse JSON response
             response_data = response.json() if response.content else None
             
-            # Update cache for models (no signal emission)
-            if 'models' in endpoint and not self.connection_error:
-                self.cache['models'] = {
-                    'data': response_data,
-                    'timestamp': time.time()
-                }
+           
 
             return response_data
             
@@ -148,8 +141,6 @@ class ApiService(QObject):
     # Model API methods
     def get_models(self):
         """Get list of all models from the API"""
-        if 'models' in self.cache and time.time() - self.cache['models']['timestamp'] < self.cache_expiry:
-            self.request_finished.emit('api/models', True, self.cache['models']['data'])
         
         # Execute the request in a separate thread
         self._execute_in_thread('api/models', '_handle_request', 'api/models', 'GET')
@@ -228,8 +219,6 @@ class ApiService(QObject):
     def get_devices(self):
         """Get list of all registered devices"""
         # Check cache first
-        if 'devices' in self.cache and time.time() - self.cache['devices']['timestamp'] < self.cache_expiry:
-            self.request_finished.emit('api/devices', True, self.cache['devices']['data'])
         
         self._execute_in_thread('api/devices', '_handle_request', 'api/devices', 'GET')
     
