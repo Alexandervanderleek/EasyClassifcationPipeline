@@ -1,5 +1,3 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
 
 """
 Setup Tab - Project setup and configuration
@@ -158,6 +156,10 @@ class SetupTab(QWidget):
         self.open_project_button.clicked.connect(self.open_project)
         project_buttons_layout.addWidget(self.open_project_button)
         
+        self.delete_project_button = QPushButton("Delete Project")
+        self.delete_project_button.clicked.connect(self.delete_project)
+        project_buttons_layout.addWidget(self.delete_project_button)
+        
         self.refresh_projects_button = QPushButton("Refresh")
         self.refresh_projects_button.clicked.connect(self.refresh_projects)
         project_buttons_layout.addWidget(self.refresh_projects_button)
@@ -173,10 +175,18 @@ class SetupTab(QWidget):
         self.api_endpoint_label = QLabel(self.config.api_endpoint)
         api_layout.addRow("API Endpoint:", self.api_endpoint_label)
         
+        api_buttons_layout = QHBoxLayout()
+        
         self.settings_button = QPushButton("Edit Settings")
         self.settings_button.clicked.connect(self.show_settings)
+        api_buttons_layout.addWidget(self.settings_button)
+        
+        self.test_connection_button = QPushButton("Test Connection")
+        self.test_connection_button.clicked.connect(self.test_api_connection)
+        api_buttons_layout.addWidget(self.test_connection_button)
+        
         settings_layout.addLayout(api_layout)
-        settings_layout.addWidget(self.settings_button)
+        settings_layout.addLayout(api_buttons_layout)
         
         # Add groups to main layout
         layout.addWidget(projects_group, 2)
@@ -250,6 +260,57 @@ class SetupTab(QWidget):
         
         self.on_project_selected(selected_items[0])
     
+    def delete_project(self):
+        """Delete a selected project"""
+        selected_items = self.project_list.selectedItems()
+        
+        if not selected_items:
+            self.main_window.show_warning_message(
+                "Warning", 
+                "Please select a project to delete"
+            )
+            return
+        
+        project_data = selected_items[0].data(Qt.UserRole)
+        project_name = project_data['name']
+        project_path = project_data['path']
+        
+        # Confirm deletion with the user
+        confirm = self.main_window.confirm_action(
+            "Delete Project",
+            f"Are you sure you want to delete project '{project_name}'?\n\n"
+            "This will permanently delete all project files, models, and data.\n"
+            "This action cannot be undone."
+        )
+        
+        if not confirm:
+            return
+        
+        try:
+            # Check if this is the currently open project
+            if (self.main_window.current_project and 
+                self.main_window.current_project['path'] == project_path):
+                # Reset current project
+                self.main_window.current_project = None
+                self.main_window.project_label.setText("No project selected")
+                self.main_window.update_tabs_state()
+            
+            # Delete the project directory
+            import shutil
+            shutil.rmtree(project_path)
+            
+            # Show success message
+            self.main_window.show_status_message(f"Project '{project_name}' deleted", 5000)
+            
+            # Refresh project list
+            self.refresh_projects()
+            
+        except Exception as e:
+            self.main_window.show_error_message(
+                "Error",
+                f"Failed to delete project: {str(e)}"
+            )#!/usr/bin/env python3
+    
     def on_project_selected(self, item):
         """Handle project selection"""
         project_data = item.data(Qt.UserRole)
@@ -259,9 +320,63 @@ class SetupTab(QWidget):
         
         self.main_window.show_status_message(f"Project '{project_data['name']}' opened", 5000)
     
+    def test_api_connection(self):
+        """Test connection to the API server"""
+        # Reset any existing connection error state
+        self.main_window.api_service.connection_error = False
+        self.main_window.api_service.last_error_time = None
+        
+        # Show status message
+        self.main_window.show_status_message("Testing API connection...", 3000)
+        
+        # Create busy indicator
+        from PySide6.QtWidgets import QProgressDialog
+        from PySide6.QtCore import Qt
+        
+        progress = QProgressDialog("Connecting to API server...", None, 0, 0, self)
+        progress.setWindowTitle("Testing Connection")
+        progress.setWindowModality(Qt.WindowModal)
+        progress.setValue(0)
+        progress.show()
+        
+        # Make a simple request to test connectivity (get models)
+        from PySide6.QtCore import QTimer
+        
+        def handle_response(endpoint, success, data):
+            # Close progress dialog
+            progress.close()
+            
+            if success:
+                self.main_window.show_info_message(
+                    "Connection Successful",
+                    f"Successfully connected to API server at: {self.config.api_endpoint}"
+                )
+            # The global error handler in MainWindow will show error dialog if needed
+        
+        # Connect signal for this specific test only
+        self.main_window.api_service.request_finished.connect(handle_response)
+
     def show_settings(self):
         """Show settings dialog"""
         dialog = SettingsDialog(self, self.config)
+        
+        # Check if API is in error state and show warning
+        if self.main_window.api_service.connection_error:
+            from PySide6.QtWidgets import QMessageBox
+            
+            warning = QMessageBox(self)
+            warning.setIcon(QMessageBox.Warning)
+            warning.setWindowTitle("API Connection Issue")
+            warning.setText("There is currently a connection issue with the API server.")
+            warning.setInformativeText(
+                "You can edit your API settings to fix the connection problem.\n"
+                "After changing the settings, use the 'Test Connection' button to verify."
+            )
+            warning.setStandardButtons(QMessageBox.Ok | QMessageBox.Cancel)
+            
+            result = warning.exec()
+            if result == QMessageBox.Cancel:
+                return
         
         if dialog.exec():
             # Update UI
@@ -269,5 +384,8 @@ class SetupTab(QWidget):
             
             # Update API service
             self.main_window.api_service.set_api_url(self.config.api_endpoint)
+            
+            # Reset connection state to allow reconnection with new settings
+            self.main_window.api_service.reset_connection()
             
             self.main_window.show_status_message("Settings saved", 3000)

@@ -21,6 +21,11 @@ class ApiService(QObject):
         super().__init__()
         self.config = config
         self.session = requests.Session()
+        
+        # Error handling flags
+        self.connection_error = False
+        self.last_error_time = None
+        self.retry_delay = 60  # seconds before allowing another retry after error
     
     def close(self):
         """Close the API service"""
@@ -38,21 +43,42 @@ class ApiService(QObject):
     
     def _handle_request(self, endpoint, method, data=None, files=None, json_data=None, params=None):
         """Handle API requests with error handling and signals"""
+        import time
+        from datetime import datetime, timedelta
+        
+        # Check if we're in an error state and should delay retries
+        current_time = datetime.now()
+        if self.connection_error and self.last_error_time:
+            time_since_error = (current_time - self.last_error_time).total_seconds()
+            if time_since_error < self.retry_delay:
+                # Return cached error without making a new request
+                error_info = {
+                    'error_type': 'ConnectionBlocked',
+                    'error_message': f'API connection failed. Retry in {int(self.retry_delay - time_since_error)} seconds.',
+                    'is_retry_blocked': True,
+                    'retry_after': int(self.retry_delay - time_since_error)
+                }
+                return error_info
+        
         full_url = f"{self.get_api_url()}/{endpoint.lstrip('/')}"
         
         self.request_started.emit(endpoint)
         
         try:
             if method.lower() == 'get':
-                response = self.session.get(full_url, params=params)
+                response = self.session.get(full_url, params=params, timeout=10)  # Add timeout
             elif method.lower() == 'post':
-                response = self.session.post(full_url, data=data, files=files, json=json_data)
+                response = self.session.post(full_url, data=data, files=files, json=json_data, timeout=10)
             elif method.lower() == 'put':
-                response = self.session.put(full_url, data=data, json=json_data)
+                response = self.session.put(full_url, data=data, json=json_data, timeout=10)
             elif method.lower() == 'delete':
-                response = self.session.delete(full_url)
+                response = self.session.delete(full_url, timeout=10)
             else:
                 raise ValueError(f"Unsupported HTTP method: {method}")
+            
+            # Reset error state on successful connection
+            self.connection_error = False
+            self.last_error_time = None
             
             # Check if request was successful
             response.raise_for_status()
@@ -64,10 +90,20 @@ class ApiService(QObject):
             return response_data
             
         except requests.exceptions.RequestException as e:
+            # Set error state
+            self.connection_error = True
+            self.last_error_time = current_time
+            
             error_info = {
                 'error_type': type(e).__name__,
                 'error_message': str(e)
             }
+            
+            # Handle connection errors specifically
+            if isinstance(e, (requests.exceptions.ConnectionError, 
+                              requests.exceptions.Timeout,
+                              requests.exceptions.ConnectTimeout)):
+                error_info['error_message'] = f"Could not connect to API server at {self.get_api_url()}. Please check your connection and API endpoint settings."
             
             # Try to get response data if available
             try:

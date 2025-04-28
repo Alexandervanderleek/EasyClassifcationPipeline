@@ -35,6 +35,9 @@ class MainWindow(QMainWindow):
         self.api_service = ApiService(config)
         self.model_service = ModelService(config)
         
+        # Connect API service signals
+        self.api_service.request_finished.connect(self.on_api_request_finished)
+        
         # Set up UI
         self.setup_ui()
         
@@ -168,6 +171,49 @@ class MainWindow(QMainWindow):
         
         return reply == QMessageBox.Yes
     
+    @Slot(str, bool, object)
+    def on_api_request_finished(self, endpoint, success, data):
+        """Handle API request finished signal from the ApiService"""
+        # If there was an API connection error, show a meaningful error message
+        if not success:
+            error_type = data.get('error_type', '')
+            
+            # Check if it's a connection error that should be shown to the user
+            if any(err in error_type for err in ['ConnectionError', 'Timeout', 'ConnectTimeout']):
+                # Only show error message if not a retry block
+                if not data.get('is_retry_blocked', False):
+                    error_message = data.get('error_message', 'Unknown connection error')
+                    
+                    # Use QMessageBox directly for connection errors
+                    from PySide6.QtWidgets import QMessageBox
+                    msg_box = QMessageBox(self)
+                    msg_box.setIcon(QMessageBox.Critical)
+                    msg_box.setWindowTitle("API Connection Error")
+                    msg_box.setText(error_message)
+                    
+                    # Add details about retry
+                    msg_box.setInformativeText(
+                        "The application will automatically retry after a delay.\n"
+                        "You can also check your connection and API settings, then try again."
+                    )
+                    
+                    # Add buttons
+                    msg_box.setStandardButtons(QMessageBox.Ok | QMessageBox.Retry)
+                    msg_box.setDefaultButton(QMessageBox.Ok)
+                    
+                    # Show the dialog
+                    button_clicked = msg_box.exec()
+                    
+                    # If retry was clicked, reset the API service error state
+                    if button_clicked == QMessageBox.Retry:
+                        self.api_service.connection_error = False
+                        self.api_service.last_error_time = None
+                        
+                        # Try to refresh the current tab
+                        current_tab = self.tab_widget.currentWidget()
+                        if hasattr(current_tab, 'on_tab_selected'):
+                            current_tab.on_tab_selected()
+            
     def closeEvent(self, event):
         """Handle application close event"""
         # Save config
