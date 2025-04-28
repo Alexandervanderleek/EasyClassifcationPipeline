@@ -144,37 +144,12 @@ class DevicesTab(QWidget):
         buttons_layout = QHBoxLayout()
         
         self.refresh_button = QPushButton("Refresh")
-        self.refresh_button.clicked.connect(self.refresh_devices)
+        self.refresh_button.clicked.connect(self.refresh_devices_button)
         buttons_layout.addWidget(self.refresh_button)
-        
-        self.register_button = QPushButton("Register New Device")
-        self.register_button.clicked.connect(self.register_device)
-        buttons_layout.addWidget(self.register_button)
         
         devices_layout.addLayout(buttons_layout)
         
         layout.addWidget(devices_group)
-        
-        # Device details group
-        details_group = QGroupBox("Device Details")
-        details_layout = QFormLayout(details_group)
-        
-        self.device_id_label = QLabel("N/A")
-        details_layout.addRow("Device ID:", self.device_id_label)
-        
-        self.device_name_label = QLabel("N/A")
-        details_layout.addRow("Device Name:", self.device_name_label)
-        
-        self.device_status_label = QLabel("N/A")
-        details_layout.addRow("Status:", self.device_status_label)
-        
-        self.last_active_label = QLabel("N/A")
-        details_layout.addRow("Last Active:", self.last_active_label)
-        
-        self.current_model_label = QLabel("N/A")
-        details_layout.addRow("Current Model:", self.current_model_label)
-        
-        layout.addWidget(details_group)
         
         # Add stretch at the end to push widgets to the top
         layout.addStretch()
@@ -200,22 +175,11 @@ class DevicesTab(QWidget):
         self.api_service.get_devices()
         self.api_service.get_models()
     
-    def register_device(self):
-        """Register a new device with the server"""
-        dialog = RegisterDeviceDialog(self)
-        
-        if dialog.exec():
-            device_name = dialog.device_name.text().strip()
-            
-            if not device_name:
-                self.main_window.show_error_message("Error", "Device name cannot be empty")
-                return
-            
-            # Register device
-            self.api_service.register_device(device_name)
-            
-            # Show status message
-            self.main_window.show_status_message("Registering device...", 3000)
+    def refresh_devices_button(self):
+        self.main_window.show_loading("Loading Devices...")
+        self.api_service.get_devices()
+        self.api_service.get_models()
+    
     
     def assign_model(self, device_id, device_name):
         """Assign a model to a device"""

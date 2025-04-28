@@ -97,7 +97,7 @@ class ResultsTab(QWidget):
         
         # Add refresh button
         self.refresh_button = QPushButton("Refresh")
-        self.refresh_button.clicked.connect(self.refresh_triggered)
+        self.refresh_button.clicked.connect(self.refresh_results_button)
         filters_layout.addWidget(self.refresh_button)
         
         top_layout.addWidget(filters_group)
@@ -243,6 +243,21 @@ class ResultsTab(QWidget):
     
     def refresh_results(self):
         """Refresh results based on current filters"""
+        if self.is_loading_results:
+            return
+        
+        self.is_loading_results = True
+        # Get filter values
+        self.device_filter = self.device_combo.currentData()
+        self.model_filter = self.model_combo.currentData()
+        self.limit = self.limit_spin.value()
+        
+        # Get results
+        self.api_service.get_results(self.device_filter, self.model_filter, self.limit)
+    
+    def refresh_results_button(self):
+        """Refresh results based on current filters"""
+        self.main_window.show_loading("Loading Results...")
         if self.is_loading_results:
             return
         

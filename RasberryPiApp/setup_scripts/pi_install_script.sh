@@ -13,7 +13,7 @@ NC='\033[0m' # No Color
 # Configuration - Edit these variables
 API_URL="http://your-server-address:5000"
 INTERVAL=300  # Capture interval in seconds
-THRESHOLD=0.7  # Confidence threshold
+THRESHOLD=0.5  # Confidence threshold
 INSTALL_DIR="/home/pi/classifier"
 
 echo -e "${GREEN}=========================================${NC}"

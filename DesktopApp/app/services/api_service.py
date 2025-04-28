@@ -226,10 +226,6 @@ class ApiService(QObject):
         """Get specific device details"""
         self._execute_in_thread(f'api/devices/{device_id}', '_handle_request', f'api/devices/{device_id}', 'GET')
     
-    def register_device(self, device_name):
-        """Register a new device"""
-        self._execute_in_thread('api/devices/register', '_handle_request', 'api/devices/register', 'POST', 
-                               json_data={'device_name': device_name})
     
     def set_device_model(self, device_id, model_id):
         """Assign a model to a device"""
