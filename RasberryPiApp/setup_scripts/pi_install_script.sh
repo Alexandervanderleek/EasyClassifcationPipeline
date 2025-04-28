@@ -42,11 +42,11 @@ apt-get update
 apt-get install -y python3-pip python3-opencv libatlas-base-dev
 
 echo -e "\n${GREEN}Installing Python dependencies...${NC}"
-pip3 install numpy requests pillow tflite-runtime
+pip3 install requests pillow tflite-runtime
 
 echo -e "\n${GREEN}Creating installation directory...${NC}"
 mkdir -p "$INSTALL_DIR"
-chown pi:pi "$INSTALL_DIR"
+chown admin:admin "$INSTALL_DIR"
 
 echo -e "\n${GREEN}Downloading classifier scripts...${NC}"
 # Note: In a real scenario, you would curl/wget these from a GitHub repo
@@ -59,7 +59,7 @@ echo -e "\n${GREEN}Downloading classifier scripts...${NC}"
 # Create needed directories
 mkdir -p "$INSTALL_DIR/models"
 mkdir -p "$INSTALL_DIR/images"
-chown -R pi:pi "$INSTALL_DIR"
+chown -R admin:admin "$INSTALL_DIR"
 
 echo -e "\n${GREEN}Setting up systemd service...${NC}"
 cat > /etc/systemd/system/classifier.service << EOF
