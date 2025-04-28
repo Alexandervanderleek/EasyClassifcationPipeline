@@ -355,7 +355,7 @@ class ResultsTab(QWidget):
             self.devices = data['devices']
             self.update_device_combo()
         
-        elif 'api/models' in endpoint and success and 'models' in data:
+        elif 'api/models' in endpoint and not 'create' in endpoint and success and 'models' in data:
             # Update models list for filter
             self.models = data['models']
             self.update_model_combo()

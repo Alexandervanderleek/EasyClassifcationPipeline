@@ -133,12 +133,15 @@ class ApiService(QObject):
         }
         
         try:
-            return self._handle_request('api/models', 'POST', files=files)
+            return self._handle_request('api/models/create', 'POST', files=files)
         finally:
             # Close file handles
             for f in files.values():
                 f.close()
-    
+    def health_check(self):
+        """Check if the API server is reachable"""
+        return self._handle_request('api/health', 'GET')
+
     # Device API methods
     def get_devices(self):
         """Get list of all registered devices"""

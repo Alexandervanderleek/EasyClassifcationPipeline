@@ -1,0 +1,24 @@
+{
+    "project_name": "bed_classifier_2",
+    "date_created": "2025-04-28T10:25:47.421687",
+    "classes": [
+        "negative",
+        "positive"
+    ],
+    "class_indices": {
+        "negative": 0,
+        "positive": 1
+    },
+    "training_params": {
+        "epochs": 10,
+        "batch_size": 32,
+        "learning_rate": 0.0001
+    },
+    "training_results": {
+        "final_accuracy": 0.9791666865348816,
+        "final_val_accuracy": 1.0
+    },
+    "model_id": "e74c1188-a147-4aac-9ea1-51b8a1f6b70f",
+    "upload_date": "2025-04-28T11:45:29.194140",
+    "model_filename": "model.tflite"
+}

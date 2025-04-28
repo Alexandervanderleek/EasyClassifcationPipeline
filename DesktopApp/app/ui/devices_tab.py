@@ -182,10 +182,17 @@ class DevicesTab(QWidget):
     
     def on_tab_selected(self):
         """Handle when this tab is selected"""
-        # Refresh devices
-        self.refresh_devices()
+        # Show loading indicator
+        self.devices_table.setRowCount(0)
+        loading_item = QTableWidgetItem("Loading devices...")
+        self.devices_table.insertRow(0)
+        self.devices_table.setSpan(0, 0, 1, 5)
+        self.devices_table.setItem(0, 0, loading_item)
         
-        # Start refresh timer
+        # Refresh devices in a non-blocking way
+        QTimer.singleShot(100, self.refresh_devices)
+        
+            # Start refresh timer
         self.refresh_timer.start()
     
     def on_project_changed(self, project_name, project_path):
@@ -378,7 +385,7 @@ class DevicesTab(QWidget):
             if self.selected_device_id:
                 self.update_device_details(self.selected_device_id)
         
-        elif 'api/models' in endpoint and success and 'models' in data:
+        elif 'api/models' in endpoint and not 'create' in endpoint and success and 'models' in data:
             # Update models list
             self.models = data['models']
             self.update_devices_table()

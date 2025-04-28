@@ -7,10 +7,10 @@ import os
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QFormLayout, QLabel, 
     QLineEdit, QSpinBox, QDoubleSpinBox, QPushButton, 
-    QDialog, QDialogButtonBox, QListWidget, QListWidgetItem,
+    QDialog, QDialogButtonBox, QListWidget, QListWidgetItem, QProgressDialog,
     QGroupBox, QMessageBox, QFileDialog
 )
-from PySide6.QtCore import Qt, Slot
+from PySide6.QtCore import Qt, Slot, QTimer
 
 class SettingsDialog(QDialog):
     """Dialog for application settings"""
@@ -330,19 +330,27 @@ class SetupTab(QWidget):
         self.main_window.show_status_message("Testing API connection...", 3000)
         
         # Create busy indicator
-        from PySide6.QtWidgets import QProgressDialog
-        from PySide6.QtCore import Qt
-        
-        progress = QProgressDialog("Connecting to API server...", None, 0, 0, self)
+        progress = QProgressDialog("Connecting to API server...", "Cancel", 0, 0, self)
         progress.setWindowTitle("Testing Connection")
         progress.setWindowModality(Qt.WindowModal)
         progress.setValue(0)
         progress.show()
         
-        # Make a simple request to test connectivity (get models)
-        from PySide6.QtCore import QTimer
+        # Create a single-shot timer for timeout
+        timeout_timer = QTimer(self)
+        timeout_timer.setSingleShot(True)
+        timeout_timer.timeout.connect(lambda: handle_timeout())
+        timeout_timer.start(10000)  # 10-second timeout
         
         def handle_response(endpoint, success, data):
+            # Only respond to the health endpoint
+            if 'api/health' not in endpoint:
+                return
+                
+            # Disconnect the signal to prevent multiple calls
+            self.main_window.api_service.request_finished.disconnect(handle_response)
+            # Stop the timeout timer
+            timeout_timer.stop()
             # Close progress dialog
             progress.close()
             
@@ -351,11 +359,27 @@ class SetupTab(QWidget):
                     "Connection Successful",
                     f"Successfully connected to API server at: {self.config.api_endpoint}"
                 )
-            # The global error handler in MainWindow will show error dialog if needed
+        
+        def handle_timeout():
+            # Disconnect the signal
+            try:
+                self.main_window.api_service.request_finished.disconnect(handle_response)
+            except:
+                pass  # It might already be disconnected
+            
+            # Close progress dialog
+            progress.close()
+            # Show timeout message
+            self.main_window.show_error_message(
+                "Connection Failed",
+                f"Connection to {self.config.api_endpoint} timed out. Please check the API endpoint and try again."
+            )
         
         # Connect signal for this specific test only
         self.main_window.api_service.request_finished.connect(handle_response)
-
+        
+        # Use the health check endpoint specifically designed for connection testing
+        self.main_window.api_service.health_check()
     def show_settings(self):
         """Show settings dialog"""
         dialog = SettingsDialog(self, self.config)

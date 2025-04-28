@@ -24,7 +24,7 @@ models_db = {}
 devices_db = {}
 results_db = {}
 
-@app.route('/api/models', methods=['POST'])
+@app.route('/api/models/create', methods=['POST'])
 def upload_model():
     """
     Upload a new model and its metadata
@@ -229,7 +229,17 @@ def device_heartbeat(device_id):
         'should_download': should_download,
         'metadata': metadata
     })
-    
+
+@app.route('/api/health', methods=['GET'])
+def health_check():
+    """
+    Simple health check endpoint for testing API connectivity
+    """
+    return jsonify({
+        'status': 'ok',
+        'message': 'API server is running'
+    })
+
 @app.route('/api/results', methods=['POST'])
 def upload_result():
     """
