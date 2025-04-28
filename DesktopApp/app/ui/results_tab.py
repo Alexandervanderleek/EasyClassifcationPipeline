@@ -42,7 +42,7 @@ class ResultsTab(QWidget):
         # Set up refresh timer
         self.refresh_timer = QTimer(self)
         self.refresh_timer.timeout.connect(self.refresh_results)
-        self.refresh_timer.setInterval(10000)  # 10 seconds
+        self.refresh_timer.setInterval(30000)  # 10 seconds
         
         # Connect signals
         self.refresh_triggered.connect(self.refresh_results)
@@ -212,15 +212,28 @@ class ResultsTab(QWidget):
     def on_tab_selected(self):
         """Handle when this tab is selected"""
         # Refresh devices and models for filters
-        self.api_service.get_devices()
-        self.api_service.get_models()
+        self.results_table.setRowCount(0)
+        loading_item = QTableWidgetItem("Loading devices...")
+        self.results_table.insertRow(0)
+        self.results_table.setSpan(0, 0, 1, 5)
+        self.results_table.setItem(0, 0, loading_item)
         
-        # Refresh results
-        self.refresh_results()
+        QTimer.singleShot(100, self.get_inital)
+        
+        QTimer.singleShot(100, self.refresh_results)
+        # self.api_service.get_devices()
+        # self.api_service.get_models()
+        
+        # # Refresh results
+        # self.refresh_results()
         
         # Start refresh timer
         self.refresh_timer.start()
     
+    def get_inital(self):
+        self.api_service.get_devices()
+        self.api_service.get_models()
+
     def set_device_filter(self, device_id):
         """Set the device filter (called from Devices tab)"""
         for i in range(self.device_combo.count()):
@@ -252,7 +265,7 @@ class ResultsTab(QWidget):
         # Clear and add "All Devices" option
         self.device_combo.clear()
         self.device_combo.addItem("All Devices", None)
-        
+
         # Add devices
         for device in self.devices:
             self.device_combo.addItem(device['device_name'], device['device_id'])
@@ -274,6 +287,7 @@ class ResultsTab(QWidget):
         
         # Add models
         for model in self.models:
+            print(self.models)
             self.model_combo.addItem(model['project_name'], model['model_id'])
         
         # Restore previous selection if possible
