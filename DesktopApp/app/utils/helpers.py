@@ -1,14 +1,8 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-
 """
-Helper utility functions for the application
+Utils Package - Utility functions and helpers
 """
 
-import os
 from datetime import datetime, timedelta
-from PySide6.QtWidgets import QProgressDialog
-from PySide6.QtCore import Qt
 
 def format_time_ago(timestamp_str):
     """Format a timestamp as a human-readable 'time ago' string"""
@@ -30,20 +24,10 @@ def format_time_ago(timestamp_str):
     except:
         return "Unknown"
 
-def create_busy_indicator(parent, title, message, modal=True):
-    """Create a busy indicator dialog"""
-    progress = QProgressDialog(message, "Cancel", 0, 0, parent)
-    progress.setWindowTitle(title)
-    progress.setWindowModality(Qt.WindowModal if modal else Qt.NonModal)
-    progress.setMinimumDuration(500)  # Show after 500ms
-    progress.setValue(0)
-    progress.setAutoClose(False)
-    progress.setCancelButton(None)  # No cancel button
-    
-    return progress
-
 def validate_model_files(project_path):
     """Check if model files exist and return status"""
+    import os
+    
     model_h5_path = os.path.join(project_path, "models", "model.h5")
     tflite_path = os.path.join(project_path, "models", "model.tflite")
     metadata_path = os.path.join(project_path, "models", "metadata.json")

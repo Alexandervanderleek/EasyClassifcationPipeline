@@ -14,8 +14,7 @@ from PySide6.QtWidgets import (
     QCheckBox, QScrollArea
 )
 from PySide6.QtCore import Qt, Slot, QTimer, Signal
-from PySide6.QtGui import QFont, QColor, QPainter
-from PySide6.QtCharts import QChart, QChartView, QBarSeries, QBarSet, QBarCategoryAxis, QValueAxis
+from PySide6.QtGui import QFont, QColor
 
 class ResultsTab(QWidget):
     """Tab for viewing and analyzing classification results"""
@@ -45,7 +44,7 @@ class ResultsTab(QWidget):
         # Set up refresh timer
         self.refresh_timer = QTimer(self)
         self.refresh_timer.timeout.connect(self.refresh_results)
-        self.refresh_timer.setInterval(30000)  # 10 seconds
+        self.refresh_timer.setInterval(30000)  # 30 seconds
         
         # Connect signals
         self.refresh_triggered.connect(self.refresh_results)
@@ -55,14 +54,6 @@ class ResultsTab(QWidget):
         """Set up the user interface"""
         # Main layout
         layout = QVBoxLayout(self)
-        
-        # Create splitter for top and bottom sections
-        splitter = QSplitter(Qt.Vertical)
-        layout.addWidget(splitter)
-        
-        # Top widget - Filters and results table
-        top_widget = QWidget()
-        top_layout = QVBoxLayout(top_widget)
         
         # Filters group
         filters_group = QGroupBox("Filters")
@@ -100,9 +91,39 @@ class ResultsTab(QWidget):
         self.refresh_button.clicked.connect(self.refresh_results_button)
         filters_layout.addWidget(self.refresh_button)
         
-        top_layout.addWidget(filters_group)
+        layout.addWidget(filters_group)
+        
+        # Stats group
+        stats_group = QGroupBox("Statistics")
+        stats_layout = QHBoxLayout(stats_group)
+        
+        # Results count
+        count_layout = QFormLayout()
+        self.result_count_label = QLabel("0")
+        self.result_count_label.setFont(QFont("Arial", 10, QFont.Bold))
+        count_layout.addRow("Total Results:", self.result_count_label)
+        
+        self.positive_count_label = QLabel("0")
+        self.positive_count_label.setFont(QFont("Arial", 10, QFont.Bold))
+        self.positive_count_label.setStyleSheet("color: #2a9d8f;")
+        count_layout.addRow("Positive Results:", self.positive_count_label)
+        
+        self.negative_count_label = QLabel("0")
+        self.negative_count_label.setFont(QFont("Arial", 10, QFont.Bold))
+        self.negative_count_label.setStyleSheet("color: #e76f51;")
+        count_layout.addRow("Negative Results:", self.negative_count_label)
+        
+        stats_layout.addLayout(count_layout)
+        
+        # Add spacer to push stats to the left
+        stats_layout.addStretch(1)
+        
+        layout.addWidget(stats_group)
         
         # Results table
+        results_group = QGroupBox("Classification Results")
+        results_layout = QVBoxLayout(results_group)
+        
         self.results_table = QTableWidget()
         self.results_table.setColumnCount(6)
         self.results_table.setHorizontalHeaderLabels([
@@ -112,119 +133,41 @@ class ResultsTab(QWidget):
         self.results_table.setSelectionBehavior(QTableWidget.SelectRows)
         self.results_table.setEditTriggers(QTableWidget.NoEditTriggers)
         self.results_table.setAlternatingRowColors(True)
+        self.results_table.verticalHeader().setVisible(False)
+        self.results_table.setSortingEnabled(True)
         
-        top_layout.addWidget(self.results_table)
+        # Set table styles
+        self.results_table.setStyleSheet("""
+            QTableWidget {
+                gridline-color: #d0d0d0;
+                background-color: #ffffff;
+                alternate-background-color: #f5f5f5;
+            }
+            QHeaderView::section {
+                background-color: #f0f0f0;
+                padding: 5px;
+                border: 1px solid #d0d0d0;
+                font-weight: bold;
+            }
+        """)
         
-        # Add top widget to splitter
-        splitter.addWidget(top_widget)
+        results_layout.addWidget(self.results_table)
         
-        # Bottom widget - Charts and statistics
-        bottom_widget = QWidget()
-        bottom_layout = QVBoxLayout(bottom_widget)
-        
-        # Stats group
-        stats_group = QGroupBox("Statistics")
-        stats_layout = QHBoxLayout(stats_group)
-        
-        # Results count
-        count_layout = QFormLayout()
-        self.result_count_label = QLabel("0")
-        count_layout.addRow("Total Results:", self.result_count_label)
-        
-        self.positive_count_label = QLabel("0")
-        count_layout.addRow("Positive Results:", self.positive_count_label)
-        
-        self.negative_count_label = QLabel("0")
-        count_layout.addRow("Negative Results:", self.negative_count_label)
-        
-        stats_layout.addLayout(count_layout)
-        
-        # Chart
-        self.chart_view = self._create_chart()
-        stats_layout.addWidget(self.chart_view, 1)
-        
-        bottom_layout.addWidget(stats_group)
-        
-        # Add bottom widget to splitter
-        splitter.addWidget(bottom_widget)
-        
-        # Set initial splitter sizes
-        splitter.setSizes([400, 200])
-    
-    def _create_chart(self):
-        """Create the chart for visualization"""
-        # Create chart
-        self.chart = QChart()
-        self.chart.setTitle("Classification Results")
-        self.chart.setAnimationOptions(QChart.SeriesAnimations)
-        
-        # Create bar series
-        self.bar_series = QBarSeries()
-        
-        # Create chart view
-        chart_view = QChartView(self.chart)
-        chart_view.setRenderHint(QPainter.Antialiasing)
-        
-        return chart_view
-    
-    def _update_chart(self):
-        """Update the chart with current data"""
-        # Clear previous series
-        self.chart.removeAllSeries()
-        
-        # Count results by class
-        results_by_class = {}
-        for result in self.results:
-            result_class = result['result']
-            if result_class not in results_by_class:
-                results_by_class[result_class] = 0
-            results_by_class[result_class] += 1
-        
-        if not results_by_class:
-            # No data to display
-            return
-        
-        # Create bar set
-        bar_set = QBarSet("Results")
-        
-        # Add data and categories
-        categories = []
-        for result_class, count in results_by_class.items():
-            bar_set.append(count)
-            categories.append(result_class)
-        
-        # Create series and add to chart
-        self.bar_series = QBarSeries()
-        self.bar_series.append(bar_set)
-        self.chart.addSeries(self.bar_series)
-        
-        # Create axes
-        axis_x = QBarCategoryAxis()
-        axis_x.append(categories)
-        self.chart.addAxis(axis_x, Qt.AlignBottom)
-        self.bar_series.attachAxis(axis_x)
-        
-        axis_y = QValueAxis()
-        axis_y.setRange(0, max(results_by_class.values()) * 1.1)  # Add 10% margin
-        self.chart.addAxis(axis_y, Qt.AlignLeft)
-        self.bar_series.attachAxis(axis_y)
-        
-        # Set title
-        self.chart.setTitle(f"Classification Results ({len(self.results)} total)")
+        layout.addWidget(results_group, 1)  # Stretch factor 1 to make it take up available space
     
     def on_tab_selected(self):
         """Handle when this tab is selected"""
         # Refresh devices and models for filters
         self.main_window.show_loading("Loading Results...")
         
-        QTimer.singleShot(100, self.get_inital)
+        QTimer.singleShot(100, self.get_initial)
         
         self.refresh_timer.start()
     
-    def get_inital(self):
+    def get_initial(self):
+        """Get initial data for the tab"""
         self.api_service.get_devices()
         self.api_service.get_models()
-
         QTimer.singleShot(500, self.refresh_results)
 
     def set_device_filter(self, device_id):
@@ -256,7 +199,7 @@ class ResultsTab(QWidget):
         self.api_service.get_results(self.device_filter, self.model_filter, self.limit)
     
     def refresh_results_button(self):
-        """Refresh results based on current filters"""
+        """Refresh results when button is clicked"""
         self.main_window.show_loading("Loading Results...")
         if self.is_loading_results:
             return
@@ -318,7 +261,14 @@ class ResultsTab(QWidget):
         """Update the results table with current data"""
         self.results_table.setRowCount(0)
         
-        for i, result in enumerate(self.results):
+        # Sort results by timestamp (newest first)
+        sorted_results = sorted(
+            self.results, 
+            key=lambda x: x.get('timestamp', ''), 
+            reverse=True
+        )
+        
+        for i, result in enumerate(sorted_results):
             self.results_table.insertRow(i)
             
             # Date/Time
@@ -328,7 +278,9 @@ class ResultsTab(QWidget):
             except:
                 timestamp_text = result['timestamp']
             
-            self.results_table.setItem(i, 0, QTableWidgetItem(timestamp_text))
+            date_item = QTableWidgetItem(timestamp_text)
+            date_item.setData(Qt.UserRole, result['timestamp'])  # Store original for sorting
+            self.results_table.setItem(i, 0, date_item)
             
             # Device
             self.results_table.setItem(i, 1, QTableWidgetItem(result['device_name']))
@@ -338,33 +290,50 @@ class ResultsTab(QWidget):
             
             # Result
             result_item = QTableWidgetItem(result['result'])
-            if result['result'] == 'positive':
-                result_item.setBackground(QColor(200, 255, 200))  # Light green
+            
+            # Style by result type
+            if result['result'].lower() == 'positive':
+                result_item.setForeground(QColor("#2a9d8f"))  # Green for positive
+                result_item.setFont(QFont("Arial", 9, QFont.Bold))
             else:
-                result_item.setBackground(QColor(255, 200, 200))  # Light red
+                result_item.setForeground(QColor("#e76f51"))  # Red/orange for negative
+                result_item.setFont(QFont("Arial", 9, QFont.Bold))
             
             self.results_table.setItem(i, 3, result_item)
             
             # Confidence
-            confidence_text = f"{result['confidence'] * 100:.1f}%"
-            self.results_table.setItem(i, 4, QTableWidgetItem(confidence_text))
+            confidence_value = result.get('confidence', 0)
+            confidence_text = f"{confidence_value * 100:.1f}%"
+            confidence_item = QTableWidgetItem(confidence_text)
+            confidence_item.setData(Qt.UserRole, confidence_value)  # Store original for sorting
+            
+            # Style confidence based on value
+            if confidence_value >= 0.9:
+                confidence_item.setForeground(QColor("#1b4332"))  # Dark green for high confidence
+                confidence_item.setFont(QFont("Arial", 9, QFont.Bold))
+            elif confidence_value >= 0.7:
+                confidence_item.setForeground(QColor("#2a9d8f"))  # Medium green
+            elif confidence_value >= 0.5:
+                confidence_item.setForeground(QColor("#e9c46a"))  # Yellow
+            else:
+                confidence_item.setForeground(QColor("#e76f51"))  # Red/orange for low confidence
+            
+            self.results_table.setItem(i, 4, confidence_item)
             
             # Details button
-            details_item = QTableWidgetItem("View")
+            details_item = QTableWidgetItem("View Details")
             details_item.setTextAlignment(Qt.AlignCenter)
+            details_item.setForeground(QColor("#457b9d"))  # Blue for clickable items
             self.results_table.setItem(i, 5, details_item)
         
         # Update statistics
         self.result_count_label.setText(str(len(self.results)))
         
-        positive_count = sum(1 for r in self.results if r['result'] == 'positive')
+        positive_count = sum(1 for r in self.results if r['result'].lower() == 'positive')
         self.positive_count_label.setText(str(positive_count))
         
-        negative_count = sum(1 for r in self.results if r['result'] == 'negative')
+        negative_count = sum(1 for r in self.results if r['result'].lower() == 'negative')
         self.negative_count_label.setText(str(negative_count))
-        
-        # Update chart
-        self._update_chart()
     
     @Slot()
     def on_filter_changed(self):
@@ -381,7 +350,6 @@ class ResultsTab(QWidget):
         self._filter_timer.start(300)  # 300ms delay
     
     # Signal handlers
-    
     @Slot(str, bool, object)
     def on_request_finished(self, endpoint, success, data):
         """Handle API request finished"""

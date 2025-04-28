@@ -12,10 +12,12 @@ from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QGridLayout, 
     QLabel, QPushButton, QGroupBox, QTableWidget, QTableWidgetItem,
     QHeaderView, QComboBox, QDialog, QDialogButtonBox, QFormLayout,
-    QLineEdit, QMessageBox, QMenu
+    QLineEdit, QMessageBox, QMenu, QSplitter
 )
-from PySide6.QtCore import Qt, Slot, QTimer, Signal, QPoint
-from PySide6.QtGui import QAction
+from PySide6.QtCore import Qt, Slot, QTimer, Signal
+from PySide6.QtGui import QAction, QColor, QFont
+
+from app.utils import format_time_ago
 
 class RegisterDeviceDialog(QDialog):
     """Dialog for registering a new device"""
@@ -90,10 +92,48 @@ class AssignModelDialog(QDialog):
         """Get the selected model ID"""
         return self.model_combo.currentData()
 
+class DeviceDetailsPanel(QWidget):
+    """Panel for showing device details"""
+    
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setup_ui()
+    
+    def setup_ui(self):
+        """Set up the user interface"""
+        layout = QFormLayout(self)
+        
+        # Device details labels
+        self.device_id_label = QLabel("N/A")
+        layout.addRow("Device ID:", self.device_id_label)
+        
+        self.device_name_label = QLabel("N/A")
+        layout.addRow("Device Name:", self.device_name_label)
+        
+        self.device_status_label = QLabel("N/A")
+        layout.addRow("Status:", self.device_status_label)
+        
+        self.last_active_label = QLabel("N/A")
+        layout.addRow("Last Active:", self.last_active_label)
+        
+        self.current_model_label = QLabel("N/A")
+        layout.addRow("Current Model:", self.current_model_label)
+        
+        # Add action buttons
+        actions_layout = QHBoxLayout()
+        
+        self.assign_model_button = QPushButton("Assign Model")
+        self.assign_model_button.setEnabled(False)
+        actions_layout.addWidget(self.assign_model_button)
+        
+        self.view_results_button = QPushButton("View Results")
+        self.view_results_button.setEnabled(False)
+        actions_layout.addWidget(self.view_results_button)
+        
+        layout.addRow("Actions:", actions_layout)
+
 class DevicesTab(QWidget):
     """Tab for managing connected devices"""
-    
-    
     
     def __init__(self, main_window):
         super().__init__()
@@ -122,6 +162,15 @@ class DevicesTab(QWidget):
         # Main layout
         layout = QVBoxLayout(self)
         
+        # Create a splitter for devices list and details
+        splitter = QSplitter(Qt.Horizontal)
+        layout.addWidget(splitter)
+        
+        # Left widget - Devices list
+        left_widget = QWidget()
+        left_layout = QVBoxLayout(left_widget)
+        left_layout.setContentsMargins(0, 0, 0, 0)
+        
         # Devices group
         devices_group = QGroupBox("Connected Devices")
         devices_layout = QVBoxLayout(devices_group)
@@ -137,6 +186,7 @@ class DevicesTab(QWidget):
         self.devices_table.setEditTriggers(QTableWidget.NoEditTriggers)
         self.devices_table.setContextMenuPolicy(Qt.CustomContextMenu)
         self.devices_table.customContextMenuRequested.connect(self.show_device_context_menu)
+        self.devices_table.clicked.connect(self.on_device_selected)
         
         devices_layout.addWidget(self.devices_table)
         
@@ -147,12 +197,42 @@ class DevicesTab(QWidget):
         self.refresh_button.clicked.connect(self.refresh_devices_button)
         buttons_layout.addWidget(self.refresh_button)
         
+        self.register_button = QPushButton("Register New Device")
+        self.register_button.clicked.connect(self.register_device)
+        buttons_layout.addWidget(self.register_button)
+        
         devices_layout.addLayout(buttons_layout)
         
-        layout.addWidget(devices_group)
+        left_layout.addWidget(devices_group)
         
-        # Add stretch at the end to push widgets to the top
-        layout.addStretch()
+        # Right widget - Device details
+        right_widget = QWidget()
+        right_layout = QVBoxLayout(right_widget)
+        right_layout.setContentsMargins(0, 0, 0, 0)
+        
+        # Device details group
+        details_group = QGroupBox("Device Details")
+        self.device_details_panel = DeviceDetailsPanel()
+        
+        # Connect device detail button signals
+        self.device_details_panel.assign_model_button.clicked.connect(
+            lambda: self.assign_model(self.selected_device_id, self.get_device_name(self.selected_device_id))
+        )
+        self.device_details_panel.view_results_button.clicked.connect(
+            lambda: self.view_device_results(self.selected_device_id)
+        )
+        
+        details_layout = QVBoxLayout(details_group)
+        details_layout.addWidget(self.device_details_panel)
+        
+        right_layout.addWidget(details_group)
+        
+        # Add widgets to splitter
+        splitter.addWidget(left_widget)
+        splitter.addWidget(right_widget)
+        
+        # Set initial splitter sizes (70% left, 30% right)
+        splitter.setSizes([700, 300])
     
     def on_tab_selected(self):
         """Handle when this tab is selected"""
@@ -162,8 +242,13 @@ class DevicesTab(QWidget):
         # Refresh devices in a non-blocking way
         QTimer.singleShot(100, self.refresh_devices)
         
-            # Start refresh timer
+        # Start refresh timer
         self.refresh_timer.start()
+    
+    def on_tab_deselected(self):
+        """Handle when this tab is no longer selected"""
+        # Stop refresh timer
+        self.refresh_timer.stop()
     
     def on_project_changed(self, project_name, project_path):
         """Handle project change"""
@@ -172,14 +257,44 @@ class DevicesTab(QWidget):
     
     def refresh_devices(self):
         """Refresh the list of devices"""
+        # Force cache clearing for devices
+        self.api_service.clear_cache()
         self.api_service.get_devices()
         self.api_service.get_models()
-    
+
     def refresh_devices_button(self):
+        """Handle refresh button click"""
         self.main_window.show_loading("Loading Devices...")
+        # Force cache clearing when manually refreshing
+        self.api_service.clear_cache()
         self.api_service.get_devices()
         self.api_service.get_models()
     
+    def register_device(self):
+        """Show dialog to register a new device"""
+        dialog = RegisterDeviceDialog(self)
+        
+        if dialog.exec():
+            device_name = dialog.device_name.text().strip()
+            
+            if not device_name:
+                self.main_window.show_error_message("Error", "Device name cannot be empty")
+                return
+            
+            # Show loading indicator
+            self.main_window.show_loading("Registering device...")
+            
+            # Make API request to register device
+            self.api_service.register_device(device_name)
+            # This would normally be implemented in ApiService
+            
+    
+    def get_device_name(self, device_id):
+        """Get the name of a device by ID"""
+        for device in self.devices:
+            if device['device_id'] == device_id:
+                return device['device_name']
+        return "Unknown Device"
     
     def assign_model(self, device_id, device_name):
         """Assign a model to a device"""
@@ -216,32 +331,19 @@ class DevicesTab(QWidget):
             # Status
             status_item = QTableWidgetItem(device['status'])
             if device['status'] == 'running':
-                status_item.setBackground(Qt.green)
+                status_item.setBackground(QColor(200, 255, 200))  # Light green
+                status_item.setForeground(QColor(0, 100, 0))      # Dark green text
+                status_item.setFont(QFont("Arial", 9, QFont.Bold))
             elif device['status'] == 'idle':
-                status_item.setBackground(Qt.yellow)
+                status_item.setBackground(QColor(255, 255, 200))  # Light yellow
+                status_item.setForeground(QColor(150, 150, 0))      # Dark yellow text
             else:
-                status_item.setBackground(Qt.red)
+                status_item.setBackground(QColor(255, 200, 200))  # Light red
+                status_item.setForeground(QColor(150, 0, 0))      # Dark red text
             self.devices_table.setItem(i, 1, status_item)
             
             # Last Active
-            try:
-                last_active = datetime.fromisoformat(device['last_active'])
-                now = datetime.now()
-                
-                if (now - last_active) < timedelta(minutes=5):
-                    last_active_text = "Just now"
-                elif (now - last_active) < timedelta(hours=1):
-                    minutes = (now - last_active).seconds // 60
-                    last_active_text = f"{minutes} min ago"
-                elif (now - last_active) < timedelta(days=1):
-                    hours = (now - last_active).seconds // 3600
-                    last_active_text = f"{hours} hours ago"
-                else:
-                    days = (now - last_active).days
-                    last_active_text = f"{days} days ago"
-            except:
-                last_active_text = "Unknown"
-                
+            last_active_text = format_time_ago(device.get('last_active', ''))
             self.devices_table.setItem(i, 2, QTableWidgetItem(last_active_text))
             
             # Model
@@ -267,32 +369,62 @@ class DevicesTab(QWidget):
             actions_layout.addWidget(assign_button)
             
             self.devices_table.setCellWidget(i, 4, actions_widget)
+        
+        # If a device was selected, update its details
+        if self.selected_device_id:
+            self.update_device_details(self.selected_device_id)
+    
+    def on_device_selected(self, index):
+        """Handle device selection in the table"""
+        row = index.row()
+        if row >= 0 and row < len(self.devices):
+            self.selected_device_id = self.devices[row]['device_id']
+            self.update_device_details(self.selected_device_id)
     
     def update_device_details(self, device_id):
         """Update the device details panel"""
-        for device in self.devices:
-            if device['device_id'] == device_id:
-                self.device_id_label.setText(device['device_id'])
-                self.device_name_label.setText(device['device_name'])
-                self.device_status_label.setText(device['status'])
-                self.last_active_label.setText(device['last_active'])
-                
-                # Find model name
-                model_name = "None"
-                for model in self.models:
-                    if model['model_id'] == device.get('current_model_id'):
-                        model_name = model['project_name']
-                        break
-                
-                self.current_model_label.setText(model_name)
-                return
+        device = next((d for d in self.devices if d['device_id'] == device_id), None)
+        if not device:
+            # Clear details if device not found
+            self.device_details_panel.device_id_label.setText("N/A")
+            self.device_details_panel.device_name_label.setText("N/A")
+            self.device_details_panel.device_status_label.setText("N/A")
+            self.device_details_panel.last_active_label.setText("N/A")
+            self.device_details_panel.current_model_label.setText("N/A")
+            self.device_details_panel.assign_model_button.setEnabled(False)
+            self.device_details_panel.view_results_button.setEnabled(False)
+            return
         
-        # Clear details if device not found
-        self.device_id_label.setText("N/A")
-        self.device_name_label.setText("N/A")
-        self.device_status_label.setText("N/A")
-        self.last_active_label.setText("N/A")
-        self.current_model_label.setText("N/A")
+        # Update details
+        self.device_details_panel.device_id_label.setText(device['device_id'])
+        self.device_details_panel.device_name_label.setText(device['device_name'])
+        
+        # Status with styling
+        status_text = device['status']
+        self.device_details_panel.device_status_label.setText(status_text)
+        if status_text == 'running':
+            self.device_details_panel.device_status_label.setStyleSheet("color: green; font-weight: bold;")
+        elif status_text == 'idle':
+            self.device_details_panel.device_status_label.setStyleSheet("color: orange;")
+        else:
+            self.device_details_panel.device_status_label.setStyleSheet("color: red;")
+        
+        # Last active
+        last_active_text = format_time_ago(device.get('last_active', ''))
+        self.device_details_panel.last_active_label.setText(last_active_text)
+        
+        # Current model
+        model_name = "None"
+        for model in self.models:
+            if model['model_id'] == device.get('current_model_id'):
+                model_name = model['project_name']
+                break
+        
+        self.device_details_panel.current_model_label.setText(model_name)
+        
+        # Enable buttons
+        self.device_details_panel.assign_model_button.setEnabled(True)
+        self.device_details_panel.view_results_button.setEnabled(True)
     
     def show_device_context_menu(self, pos):
         """Show context menu for device table"""
@@ -303,6 +435,9 @@ class DevicesTab(QWidget):
         
         # Get the device for the selected row
         row = selected_indexes[0].row()
+        if row < 0 or row >= len(self.devices):
+            return
+            
         device_id = self.devices[row]['device_id']
         device_name = self.devices[row]['device_name']
         
@@ -343,6 +478,8 @@ class DevicesTab(QWidget):
             # Update details if a device is selected
             if self.selected_device_id:
                 self.update_device_details(self.selected_device_id)
+                
+            self.main_window.hide_loading()
         
         elif 'api/models' in endpoint and not 'create' in endpoint and success and 'models' in data:
             # Update models list
@@ -352,10 +489,10 @@ class DevicesTab(QWidget):
         
         elif 'api/devices/register' in endpoint and success:
             # Show success message
-            model_id = data.get('device_id', 'Unknown')
+            device_id = data.get('device_id', 'Unknown')
             self.main_window.show_info_message(
                 "Device Registered",
-                f"Device registered successfully with ID: {model_id}"
+                f"Device registered successfully with ID: {device_id}"
             )
             
             # Refresh devices

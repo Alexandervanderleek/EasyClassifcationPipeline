@@ -10,7 +10,7 @@ from PySide6.QtWidgets import (
     QMainWindow, QTabWidget, QVBoxLayout, QWidget, QStatusBar,
     QMessageBox, QToolBar, QLabel
 )
-from PySide6.QtCore import Qt, Slot
+from PySide6.QtCore import Qt, Slot, QSettings, QSize
 from PySide6.QtGui import QAction, QIcon
 from app.ui.components import LoadingOverlay
 
@@ -32,7 +32,7 @@ class MainWindow(QMainWindow):
         self.config = config
         self.current_project = None
         
-        # Set up API and model services
+        # Set up services
         self.api_service = ApiService(config)
         self.model_service = ModelService(config)
         
@@ -41,6 +41,9 @@ class MainWindow(QMainWindow):
         
         # Set up UI
         self.setup_ui()
+        
+        # Restore window geometry
+        self.restore_window_state()
         
     def setup_ui(self):
         """Set up the user interface"""
@@ -51,10 +54,12 @@ class MainWindow(QMainWindow):
         # Create central widget and layout
         central_widget = QWidget()
         main_layout = QVBoxLayout(central_widget)
+        main_layout.setContentsMargins(8, 8, 8, 8)
         self.setCentralWidget(central_widget)
         
         # Create tab widget
         self.tab_widget = QTabWidget()
+        self.tab_widget.setDocumentMode(True)
         main_layout.addWidget(self.tab_widget)
         
         # Create tabs
@@ -90,6 +95,7 @@ class MainWindow(QMainWindow):
         # Disable tabs that require a project
         self.update_tabs_state()
 
+        # Create loading overlay
         self.loading_overlay = LoadingOverlay(self.centralWidget())
         self.loading_overlay.hide()
         
@@ -102,6 +108,7 @@ class MainWindow(QMainWindow):
         """Set up the application toolbar"""
         toolbar = QToolBar("Main Toolbar")
         toolbar.setMovable(False)
+        toolbar.setIconSize(QSize(24, 24))
         self.addToolBar(toolbar)
         
         # Add actions
@@ -118,6 +125,34 @@ class MainWindow(QMainWindow):
         settings_action = QAction("Settings", self)
         settings_action.triggered.connect(self.setup_tab.show_settings)
         toolbar.addAction(settings_action)
+        
+        toolbar.addSeparator()
+        
+        refresh_action = QAction("Refresh", self)
+        refresh_action.triggered.connect(self.refresh_current_tab)
+        toolbar.addAction(refresh_action)
+    
+    def refresh_current_tab(self):
+        """Refresh the current tab"""
+        current_tab = self.tab_widget.currentWidget()
+        
+        # Update the tab content if needed
+        if hasattr(current_tab, 'on_tab_selected'):
+            current_tab.on_tab_selected()
+    
+    def save_window_state(self):
+        """Save window geometry and state"""
+        settings = QSettings("ClassifierProject", "ML Classifier Trainer")
+        settings.setValue("geometry", self.saveGeometry())
+        settings.setValue("windowState", self.saveState())
+        
+    def restore_window_state(self):
+        """Restore window geometry and state"""
+        settings = QSettings("ClassifierProject", "ML Classifier Trainer")
+        if settings.contains("geometry"):
+            self.restoreGeometry(settings.value("geometry"))
+        if settings.contains("windowState"):
+            self.restoreState(settings.value("windowState"))
     
     @Slot(str, str)
     def on_api_request_error(self, endpoint, error_message):
@@ -138,15 +173,21 @@ class MainWindow(QMainWindow):
             elif 'upload' in endpoint:
                 message = "Uploading..."
             elif 'health' in endpoint:
-                message = "Pinging api..."
+                message = "Checking connection..."
+            
             self.show_loading(message)
     
     @Slot(int)
     def on_tab_changed(self, index):
         """Handle tab changed event to update tab contents"""
-        current_tab = self.tab_widget.widget(index)
+        # First notify previous tab that it's being deselected
+        for i in range(self.tab_widget.count()):
+            tab = self.tab_widget.widget(i)
+            if i != index and hasattr(tab, 'on_tab_deselected'):
+                tab.on_tab_deselected()
         
-        # Update the tab content if needed
+        # Then notify new tab that it's selected
+        current_tab = self.tab_widget.widget(index)
         if hasattr(current_tab, 'on_tab_selected'):
             current_tab.on_tab_selected()
     
@@ -177,9 +218,9 @@ class MainWindow(QMainWindow):
     
     def hide_loading(self):
         """Hide the loading overlay"""
-        self.loading_overlay.hide()
+        if self.loading_overlay and self.loading_overlay.isVisible():
+            self.loading_overlay.hide()
     
-
     def update_tabs_state(self):
         """Enable or disable tabs based on project selection"""
         has_project = self.current_project is not None
@@ -218,6 +259,7 @@ class MainWindow(QMainWindow):
         """Handle API request finished signal from the ApiService"""
         if any(x in endpoint for x in ['register', 'create', 'upload', 'delete', 'health']):
             self.hide_loading()
+            
         # If there was an API connection error, show a meaningful error message
         if not success:
             error_type = data.get('error_type', '')
@@ -229,7 +271,6 @@ class MainWindow(QMainWindow):
                     error_message = data.get('error_message', 'Unknown connection error')
                     
                     # Use QMessageBox directly for connection errors
-                    from PySide6.QtWidgets import QMessageBox
                     msg_box = QMessageBox(self)
                     msg_box.setIcon(QMessageBox.Critical)
                     msg_box.setWindowTitle("API Connection Error")
@@ -250,13 +291,10 @@ class MainWindow(QMainWindow):
                     
                     # If retry was clicked, reset the API service error state
                     if button_clicked == QMessageBox.Retry:
-                        self.api_service.connection_error = False
-                        self.api_service.last_error_time = None
+                        self.api_service.reset_connection()
                         
                         # Try to refresh the current tab
-                        current_tab = self.tab_widget.currentWidget()
-                        if hasattr(current_tab, 'on_tab_selected'):
-                            current_tab.on_tab_selected()
+                        self.refresh_current_tab()
 
     def resizeEvent(self, event):
         """Handle resize events to resize the loading overlay"""
@@ -266,11 +304,29 @@ class MainWindow(QMainWindow):
 
     def closeEvent(self, event):
         """Handle application close event"""
+        # Save window state
+        self.save_window_state()
+        
         # Save config
         self.config.save_config()
         
-        # Close services if needed
-        self.api_service.close()
+        # Clean up resources
+        self.cleanup()
         
         # Accept the close event
         event.accept()
+        
+    def cleanup(self):
+        """Clean up all resources before closing"""
+        # Stop refresh timers in tabs
+        for i in range(self.tab_widget.count()):
+            tab = self.tab_widget.widget(i)
+            if hasattr(tab, 'on_tab_deselected'):
+                tab.on_tab_deselected()
+        
+        # Close API service
+        self.api_service.close()
+        
+        # Stop any running camera
+        if hasattr(self.collect_tab, 'camera_service'):
+            self.collect_tab.camera_service.stop_camera()
