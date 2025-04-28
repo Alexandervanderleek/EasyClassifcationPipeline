@@ -163,6 +163,7 @@ class DeployTab(QWidget):
         if not confirm:
             return
         
+        print("About to deply")
         # Upload the model
         self.api_service.upload_model(tflite_path, metadata_path)
     
@@ -204,30 +205,6 @@ class DeployTab(QWidget):
         print(endpoint)
         if 'api/models/create' in endpoint and not self.progress_dialog:
             # Create progress dialog
-            print("Creating progress dialog...")
-            # Create progress dialog
-            self.progress_dialog = QProgressDialog("Uploading model...", "Cancel", 0, 0, self)
-            print(f"Progress dialog created: {self.progress_dialog}")
-            
-            self.progress_dialog.setWindowTitle("Deploying Model")
-            self.progress_dialog.setWindowModality(Qt.WindowModal)
-            self.progress_dialog.setMinimumDuration(0)
-            self.progress_dialog.setValue(0)
-            
-            # Try setting label text directly
-            label = self.progress_dialog.findChild(QLabel)
-            if label:
-                print(f"Found label: {label}")
-                label.setText("Uploading model to server...")
-                label.setStyleSheet("color: black; font-size: 12px;")
-            else:
-                print("No label found in progress dialog")
-                
-            self.progress_dialog.show()
-            
-            # Process events to update UI
-            QCoreApplication.processEvents()
-            print("Progress dialog should be visible now")
             
             # Process events to update UI
             QCoreApplication.processEvents()

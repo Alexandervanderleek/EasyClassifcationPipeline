@@ -187,6 +187,9 @@ class ModelService(QObject):
                 def on_epoch_end(self, epoch, logs=None):
                     if not logs:
                         logs = {}
+                        
+                    from PySide6.QtCore import QCoreApplication
+                    QCoreApplication.processEvents()
                     self.service.training_progress.emit(epoch + 1, logs)
             
             # Train the model

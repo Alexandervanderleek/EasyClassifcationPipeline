@@ -220,7 +220,7 @@ class ResultsTab(QWidget):
         
         QTimer.singleShot(100, self.get_inital)
         
-        QTimer.singleShot(100, self.refresh_results)
+        # QTimer.singleShot(100, self.refresh_results)
         # self.api_service.get_devices()
         # self.api_service.get_models()
         
@@ -233,6 +233,8 @@ class ResultsTab(QWidget):
     def get_inital(self):
         self.api_service.get_devices()
         self.api_service.get_models()
+
+        QTimer.singleShot(500, self.refresh_results)
 
     def set_device_filter(self, device_id):
         """Set the device filter (called from Devices tab)"""

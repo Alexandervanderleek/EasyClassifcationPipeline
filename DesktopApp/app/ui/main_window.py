@@ -12,6 +12,7 @@ from PySide6.QtWidgets import (
 )
 from PySide6.QtCore import Qt, Slot
 from PySide6.QtGui import QAction, QIcon
+from app.ui.components import LoadingOverlay
 
 from app.ui.setup_tab import SetupTab
 from app.ui.collect_tab import CollectTab
@@ -88,6 +89,14 @@ class MainWindow(QMainWindow):
         
         # Disable tabs that require a project
         self.update_tabs_state()
+
+        self.loading_overlay = LoadingOverlay(self.centralWidget())
+        self.loading_overlay.hide()
+        
+        # Connect API service signals
+        self.api_service.request_started.connect(self.on_api_request_started)
+        self.api_service.request_finished.connect(self.on_api_request_finished)
+        self.api_service.request_error.connect(self.on_api_request_error)
         
     def setup_toolbar(self):
         """Set up the application toolbar"""
@@ -109,6 +118,26 @@ class MainWindow(QMainWindow):
         settings_action = QAction("Settings", self)
         settings_action.triggered.connect(self.setup_tab.show_settings)
         toolbar.addAction(settings_action)
+    
+    @Slot(str, str)
+    def on_api_request_error(self, endpoint, error_message):
+        """Handle API request error signal"""
+        self.hide_loading()
+        self.show_error_message("API Error", error_message)
+
+    @Slot(str)
+    def on_api_request_started(self, endpoint):
+        """Handle API request started signal"""
+        # Only show loading for certain endpoints or operations
+        if any(x in endpoint for x in ['register', 'create', 'upload', 'delete']):
+            message = "Processing request..."
+            if 'register' in endpoint:
+                message = "Registering device..."
+            elif 'create' in endpoint:
+                message = "Creating..."
+            elif 'upload' in endpoint:
+                message = "Uploading..."
+            self.show_loading(message)
     
     @Slot(int)
     def on_tab_changed(self, index):
@@ -138,6 +167,17 @@ class MainWindow(QMainWindow):
             if hasattr(tab, 'on_project_changed'):
                 tab.on_project_changed(project_name, project_path)
     
+    def show_loading(self, message="Loading..."):
+        """Show the loading overlay with a message"""
+        self.loading_overlay.set_message(message)
+        self.loading_overlay.resize(self.centralWidget().size())
+        self.loading_overlay.show()
+    
+    def hide_loading(self):
+        """Hide the loading overlay"""
+        self.loading_overlay.hide()
+    
+
     def update_tabs_state(self):
         """Enable or disable tabs based on project selection"""
         has_project = self.current_project is not None
@@ -174,6 +214,8 @@ class MainWindow(QMainWindow):
     @Slot(str, bool, object)
     def on_api_request_finished(self, endpoint, success, data):
         """Handle API request finished signal from the ApiService"""
+        if any(x in endpoint for x in ['register', 'create', 'upload', 'delete']):
+            self.hide_loading()
         # If there was an API connection error, show a meaningful error message
         if not success:
             error_type = data.get('error_type', '')
@@ -213,7 +255,13 @@ class MainWindow(QMainWindow):
                         current_tab = self.tab_widget.currentWidget()
                         if hasattr(current_tab, 'on_tab_selected'):
                             current_tab.on_tab_selected()
-            
+
+    def resizeEvent(self, event):
+        """Handle resize events to resize the loading overlay"""
+        if self.loading_overlay and self.loading_overlay.isVisible():
+            self.loading_overlay.resize(self.centralWidget().size())
+        super().resizeEvent(event)
+
     def closeEvent(self, event):
         """Handle application close event"""
         # Save config

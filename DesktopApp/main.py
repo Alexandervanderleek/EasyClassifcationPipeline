@@ -25,8 +25,21 @@ def main():
     main_window = MainWindow(config)
     main_window.show()
     
+    app.aboutToQuit.connect(lambda: cleanup(main_window))
     # Start the event loop
     sys.exit(app.exec())
+
+def cleanup(main_window):
+    """Clean up resources before exiting"""
+    # Save config
+    main_window.config.save_config()
+    
+    # Close API service
+    main_window.api_service.close()
+    
+    # Stop any running services
+    if hasattr(main_window.collect_tab, 'camera_service'):
+        main_window.collect_tab.camera_service.stop_camera()
 
 if __name__ == "__main__":
     main()
