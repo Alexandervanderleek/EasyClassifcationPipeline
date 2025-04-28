@@ -1,0 +1,117 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+
+"""
+Data Service - Handles data import and management
+"""
+
+import os
+import cv2
+import shutil
+import time
+import threading
+from PySide6.QtCore import QObject, Signal
+
+class DataService(QObject):
+    """Service for importing and managing image data"""
+    
+    # Define signals
+    import_started = Signal(str, int)  # class_type, total_files
+    import_progress = Signal(int, int)  # current, total
+    import_finished = Signal(bool, str, int)  # success, message, total_imported
+    
+    def __init__(self, config):
+        super().__init__()
+        self.config = config
+        self.import_thread = None
+    
+    def import_images_from_folder(self, folder_path, class_type, project_path):
+        """Import all images from a selected folder"""
+        if self.import_thread and self.import_thread.is_alive():
+            return False, "Import already in progress"
+        
+        # Get list of image files
+        image_extensions = ('.jpg', '.jpeg', '.png', '.bmp', '.gif')
+        image_files = []
+        
+        for file in os.listdir(folder_path):
+            if file.lower().endswith(image_extensions) and os.path.isfile(os.path.join(folder_path, file)):
+                image_files.append(os.path.join(folder_path, file))
+        
+        if not image_files:
+            return False, "No image files found in the selected folder"
+        
+        # Start import in a separate thread
+        self.import_thread = threading.Thread(
+            target=self._import_images_thread,
+            args=(image_files, class_type, project_path),
+            daemon=True
+        )
+        self.import_thread.start()
+        
+        # Emit signal
+        self.import_started.emit(class_type, len(image_files))
+        
+        return True, f"Started importing {len(image_files)} images"
+    
+    def import_image_files(self, file_paths, class_type, project_path):
+        """Import selected image files"""
+        if self.import_thread and self.import_thread.is_alive():
+            return False, "Import already in progress"
+        
+        if not file_paths:
+            return False, "No files selected"
+        
+        # Start import in a separate thread
+        self.import_thread = threading.Thread(
+            target=self._import_images_thread,
+            args=(file_paths, class_type, project_path),
+            daemon=True
+        )
+        self.import_thread.start()
+        
+        # Emit signal
+        self.import_started.emit(class_type, len(file_paths))
+        
+        return True, f"Started importing {len(file_paths)} images"
+    
+    def _import_images_thread(self, file_paths, class_type, project_path):
+        """Thread to import images"""
+        total = len(file_paths)
+        imported = 0
+        errors = 0
+        
+        # Get target directory
+        target_dir = os.path.join(project_path, "dataset", class_type)
+        
+        for i, file_path in enumerate(file_paths):
+            try:
+                # Update progress
+                self.import_progress.emit(i + 1, total)
+                
+                # Read image to validate and potentially resize
+                img = cv2.imread(file_path)
+                if img is None:
+                    errors += 1
+                    continue
+                
+                # Save to target directory with unique name
+                timestamp = int(time.time() * 1000) + i  # Add i to avoid duplicate timestamps
+                filename = f"img_{timestamp}.jpg"
+                output_path = os.path.join(target_dir, filename)
+                
+                # Save the image
+                cv2.imwrite(output_path, img)
+                
+                imported += 1
+                
+            except Exception as e:
+                errors += 1
+                print(f"Error importing {file_path}: {str(e)}")
+            
+            # Small delay to avoid UI freezing
+            time.sleep(0.01)
+        
+        # Emit finished signal
+        message = f"Import complete: {imported} images imported, {errors} errors"
+        self.import_finished.emit(imported > 0, message, imported)
