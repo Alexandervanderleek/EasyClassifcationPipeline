@@ -86,7 +86,7 @@ jobs:
           wait_for_environment_recovery: 300
 
       - name: Upload deployment package artifact
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v2
         with:
           name: eb-deploy-package
           path: ${{ env.DEPLOY_PACKAGE_NAME }}
