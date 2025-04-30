@@ -60,6 +60,21 @@ jobs:
               leader_only: true
           ' > .ebextensions/02_migrate.config
 
+          # Nginx configuration for file uploads
+          echo '
+          files:
+            "/etc/nginx/conf.d/proxy.conf":
+              mode: "000644"
+              owner: root
+              group: root
+              content: |
+                client_max_body_size 20M;
+
+          container_commands:
+            01_reload_nginx:
+              command: "service nginx reload"
+          ' > .ebextensions/03_nginx.config
+
           # Create deployment package from Backend directory
           zip -r ../${{ env.DEPLOY_PACKAGE_NAME }} . -x "*.git*" "terraform/*" ".github/*" "tests/*" "*.pyc" "instance/*" "*.csv" "*.ipynb"
 

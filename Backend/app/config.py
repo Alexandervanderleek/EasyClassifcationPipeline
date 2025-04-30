@@ -22,7 +22,7 @@ class Config:
     S3_BUCKET_NAME = os.getenv('S3_BUCKET_NAME', 'classifier-models')
     
     # File storage settings
-    MAX_CONTENT_LENGTH = 16 * 1024 * 1024  # 16 MB max upload size
+    MAX_CONTENT_LENGTH = 20 * 1024 * 1024  # 16 MB max upload size
     
     # Logging
     LOG_LEVEL = os.getenv('LOG_LEVEL', 'INFO')
