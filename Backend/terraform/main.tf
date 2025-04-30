@@ -11,11 +11,11 @@ terraform {
   }
   
   # Optional: Configure remote state storage
-  # backend "s3" {
-  #   bucket = "your-terraform-state-bucket"
-  #   key    = "classifier-api/terraform.tfstate"
-  #   region = "us-east-1"
-  # }
+  backend "s3" {
+    bucket = "your-terraform-state-bucket"
+    key    = "classifier-api/terraform.tfstate"
+    region = "eu-west-1"
+  }
 }
 
 # Random suffix for unique resource naming
