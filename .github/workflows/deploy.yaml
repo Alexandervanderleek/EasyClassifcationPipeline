@@ -44,13 +44,7 @@ jobs:
           mkdir -p .ebextensions
           mkdir -p .platform/nginx/conf.d
 
-          # Create environment configuration
-          echo '
-          option_settings:
-            aws:elasticbeanstalk:application:environment:
-              FLASK_APP: "wsgi.py"
-              PYTHONPATH: "/var/app/current"
-          ' > .ebextensions/00_environment_config.config
+
 
           # Environment settings
           echo '
@@ -64,31 +58,8 @@ jobs:
           # Database migration configuration with improved steps
           echo '
           container_commands:
-            01_install_requirements:
-              command: "source /var/app/venv/*/bin/activate && pip install -r requirements.txt"
-              leader_only: true
-            
-            02_create_migrations_dir:
-              command: "mkdir -p migrations/versions"
-              ignoreErrors: true
-              leader_only: true
-            
-            03_init_migrations:
-              command: "source /var/app/venv/*/bin/activate && python -m flask db init || echo 'Migrations already initialized'"
-              ignoreErrors: true
-              leader_only: true
-            
-            04_create_initial_migration:
-              command: "source /var/app/venv/*/bin/activate && python -m flask db migrate -m 'Initial migration' || echo 'Migration creation skipped'"
-              ignoreErrors: true
-              leader_only: true
-            
-            05_upgrade_database:
+            01_migrate:
               command: "source /var/app/venv/*/bin/activate && python -m flask db upgrade"
-              leader_only: true
-            
-            06_log_database_status:
-              command: "source /var/app/venv/*/bin/activate && python -c \\"from app import create_app, db; app = create_app(); app.app_context().push(); print('Available tables: ' + str(db.engine.table_names()))\\" > /var/log/db_tables.log"
               leader_only: true
           ' > .ebextensions/02_migrate.config
 
