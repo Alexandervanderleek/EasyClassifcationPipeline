@@ -51,13 +51,6 @@ jobs:
             touch migrations/versions/__init__.py
           fi
 
-          # If no migrations exist, try to create an initial one
-          if [ -z "$(ls -A migrations/versions/*.py 2>/dev/null)" ]; then
-            echo "No migration files found, attempting to create initial migration"
-            FLASK_APP=run.py python -m flask db init || true
-            FLASK_APP=run.py python -m flask db migrate -m "Initial migration" || true
-          fi
-
       - name: Create Elastic Beanstalk deployment package
         run: |
           # Navigate to Backend directory
@@ -74,49 +67,22 @@ jobs:
               WSGIPath: wsgi:app
             aws:elasticbeanstalk:application:environment:
               FLASK_ENV: ${{ vars.FLASK_ENV }}
-              FLASK_APP: run.py
+              FLASK_APP: wsgi.py
           ' > .ebextensions/01_environment.config
 
-          # Improved database migration configuration with retries
+          # Simple DB migration configuration - just run the upgrade command
           echo '
           container_commands:
             01_install_requirements:
               command: "source /var/app/venv/*/bin/activate && pip install -r requirements.txt"
               leader_only: true
             
-            02_wait_for_db:
-              command: "#!/bin/bash
-                source /var/app/venv/*/bin/activate
-                cd /var/app/current
-                
-                # Wait for the database to be available
-                echo 'Waiting for database to be available...'
-                for i in {1..12}; do
-                  echo \"Attempt $i of 12\"
-                  python -c \"import psycopg2, os; conn = psycopg2.connect(os.environ.get('DATABASE_URL')); conn.close();\" && break || sleep 5
-                done
-                
-                echo 'Database is available.'"
+            02_pause_before_migration:
+              command: "sleep 5"
               leader_only: true
             
-            03_create_migrations_dir:
-              command: "mkdir -p /var/app/current/migrations/versions"
-              leader_only: true
-              
-            04_init_migrations:
-              command: "source /var/app/venv/*/bin/activate && cd /var/app/current && python -m flask db init || echo 'Migration init not needed or failed'"
-              leader_only: true
-                
-            05_create_migrations:
-              command: "source /var/app/venv/*/bin/activate && cd /var/app/current && python -m flask db migrate -m \"Initialize database schema\" || echo 'Migration creation not needed or failed'"
-              leader_only: true
-              
-            06_apply_migrations:
-              command: "source /var/app/venv/*/bin/activate && cd /var/app/current && python -m flask db upgrade"
-              leader_only: true
-            
-            07_fallback_create_tables:
-              command: "source /var/app/venv/*/bin/activate && cd /var/app/current && python -c \"from app import create_app, db; app = create_app(); with app.app_context(): db.create_all(); print('Tables created directly as fallback');\""
+            03_upgrade_db:
+              command: "source /var/app/venv/*/bin/activate && cd /var/app/current && flask db upgrade"
               leader_only: true
           ' > .ebextensions/02_migrate.config
 
