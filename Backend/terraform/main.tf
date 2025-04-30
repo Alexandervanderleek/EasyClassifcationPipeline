@@ -12,7 +12,7 @@ terraform {
   
   # Optional: Configure remote state storage
   backend "s3" {
-    bucket = "your-terraform-state-bucket"
+    bucket = "classifier-pipeline-state-bucket"
     key    = "classifier-api/terraform.tfstate"
     region = "eu-west-1"
   }

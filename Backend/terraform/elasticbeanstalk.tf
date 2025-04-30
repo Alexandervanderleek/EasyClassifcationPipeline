@@ -10,7 +10,7 @@ resource "aws_elastic_beanstalk_application" "app" {
 resource "aws_elastic_beanstalk_environment" "env" {
   name                = "${local.name_prefix}-env"
   application         = aws_elastic_beanstalk_application.app.name
-  solution_stack_name = "64bit Amazon Linux 2 v3.5.0 running Python 3.8"
+  solution_stack_name = "64bit Amazon Linux 2023 v4.5.1 running Python 3.9 "
   
   # Link to the instance profile
   setting {
