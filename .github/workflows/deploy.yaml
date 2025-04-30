@@ -7,7 +7,7 @@ on:
     paths:
       - "Backend/**" # Only trigger on changes to Backend directory
       - ".github/workflows/deploy.yml" # Or changes to this workflow
-  workflow_dispatch: # Allow manual trigger regardless of changed file
+  workflow_dispatch: # Allow manual trigger regardless of changed files
 
 env:
   AWS_REGION: eu-west-1 # Updated to match your region
@@ -42,6 +42,7 @@ jobs:
 
           # Create necessary directories
           mkdir -p .ebextensions
+          mkdir -p .platform/nginx/conf.d
 
           # Environment settings
           echo '
@@ -60,20 +61,8 @@ jobs:
               leader_only: true
           ' > .ebextensions/02_migrate.config
 
-          # Nginx configuration for file uploads
-          echo '
-          files:
-            "/etc/nginx/conf.d/proxy.conf":
-              mode: "000644"
-              owner: root
-              group: root
-              content: |
-                client_max_body_size 20M;
-
-          container_commands:
-            01_reload_nginx:
-              command: "service nginx reload"
-          ' > .ebextensions/03_nginx.config
+          # Create Nginx configuration for large file uploads (using official AWS approach)
+          echo 'client_max_body_size 50M;' > .platform/nginx/conf.d/client_max_body_size.conf
 
           # Create deployment package from Backend directory
           zip -r ../${{ env.DEPLOY_PACKAGE_NAME }} . -x "*.git*" "terraform/*" ".github/*" "tests/*" "*.pyc" "instance/*" "*.csv" "*.ipynb"
