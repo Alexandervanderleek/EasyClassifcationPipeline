@@ -173,15 +173,21 @@ class ApiService(QObject):
         
         full_url = f"{self.get_api_url()}/{endpoint.lstrip('/')}"
         
+        headers = {
+            'X-API-Key': self.config.api_key
+        }
+
+        print(headers)
+
         try:
             if method.lower() == 'get':
-                response = self.session.get(full_url, params=params, timeout=10)
+                response = self.session.get(full_url, params=params, headers=headers, timeout=10)
             elif method.lower() == 'post':
-                response = self.session.post(full_url, data=data, files=files, json=json_data, timeout=10)
+                response = self.session.post(full_url, data=data, files=files, json=json_data, headers=headers, timeout=10)
             elif method.lower() == 'put':
-                response = self.session.put(full_url, data=data, json=json_data, timeout=10)
+                response = self.session.put(full_url, data=data, json=json_data, headers=headers, timeout=10)
             elif method.lower() == 'delete':
-                response = self.session.delete(full_url, timeout=10)
+                response = self.session.delete(full_url, headers=headers, timeout=10)
             else:
                 raise ValueError(f"Unsupported HTTP method: {method}")
             
@@ -192,7 +198,6 @@ class ApiService(QObject):
             
             # Check if request was successful
             response.raise_for_status()
-            
             # Parse JSON response
             response_data = response.json() if response.content else None
             
@@ -208,7 +213,7 @@ class ApiService(QObject):
                 'error_type': type(e).__name__,
                 'error_message': str(e)
             }
-            
+
             # Handle connection errors specifically
             if isinstance(e, (requests.exceptions.ConnectionError, 
                             requests.exceptions.Timeout,
@@ -222,7 +227,7 @@ class ApiService(QObject):
                     error_info['response'] = e.response.json()
             except:
                 pass
-                
+                   
             return error_info
     
     # Model API methods
@@ -253,10 +258,15 @@ class ApiService(QObject):
                             # Get the API URL
                             full_url = f"{self.api_service.get_api_url()}/api/models/create"
                             
+                            headers = {
+                                'X-API-Key': self.api_service.config.api_key
+                            }
+
                             # Make the request directly instead of using _handle_request
                             response = self.api_service.session.post(
                                 full_url, 
                                 files=files, 
+                                headers=headers,
                                 timeout=30  # Longer timeout for uploads
                             )
                             

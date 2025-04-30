@@ -14,13 +14,13 @@ class AppConfig:
     
     def __init__(self):
         # Default configuration values
-        self.api_endpoint = os.getenv("API_URL", "http://awseb--awseb-kebw5lnvlcta-858866289.eu-west-1.elb.amazonaws.com")
+        self.api_endpoint = os.getenv("API_URL", "")
         self.camera_index = 0
         self.default_project_name = "my_classifier"
         self.default_epochs = 10
         self.default_batch_size = 32
         self.default_learning_rate = 0.0001
-        self.api_key = os.getenv("API_KEY", "alexsnewsecretkey")
+        self.api_key = os.getenv("API_KEY", "")
         
         # Paths
         self.user_home = str(Path.home())
