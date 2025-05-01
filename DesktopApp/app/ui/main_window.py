@@ -19,6 +19,7 @@ from app.ui.collect_tab import CollectTab
 from app.ui.train_tab import TrainTab
 from app.ui.deploy_tab import DeployTab
 from app.ui.devices_tab import DevicesTab
+from app.ui.models_tab import ModelsTab
 from app.ui.results_tab import ResultsTab
 from app.services.api_service import ApiService
 from app.services.model_service import ModelService
@@ -69,12 +70,14 @@ class MainWindow(QMainWindow):
         self.deploy_tab = DeployTab(self)
         self.devices_tab = DevicesTab(self)
         self.results_tab = ResultsTab(self)
+        self.models_tab = ModelsTab(self)
         
         # Add tabs to tab widget
         self.tab_widget.addTab(self.setup_tab, "Setup")
         self.tab_widget.addTab(self.collect_tab, "Collect Images")
         self.tab_widget.addTab(self.train_tab, "Train Model")
         self.tab_widget.addTab(self.deploy_tab, "Deploy Model")
+        self.tab_widget.addTab(self.models_tab, "Models")
         self.tab_widget.addTab(self.devices_tab, "Devices")
         self.tab_widget.addTab(self.results_tab, "Results")
         

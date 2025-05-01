@@ -6,15 +6,14 @@ Devices Tab - Manage and monitor connected devices
 """
 
 import os
-import json
 from datetime import datetime, timedelta
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QGridLayout, 
     QLabel, QPushButton, QGroupBox, QTableWidget, QTableWidgetItem,
     QHeaderView, QComboBox, QDialog, QDialogButtonBox, QFormLayout,
-    QLineEdit, QMessageBox, QMenu, QSplitter
+    QLineEdit, QMessageBox, QMenu, QSplitter, QCheckBox
 )
-from PySide6.QtCore import Qt, Slot, QTimer, Signal
+from PySide6.QtCore import Qt, Slot, QTimer, Signal, QSize
 from PySide6.QtGui import QAction, QColor, QFont
 
 from app.utils import format_time_ago
@@ -130,6 +129,11 @@ class DeviceDetailsPanel(QWidget):
         self.view_results_button.setEnabled(False)
         actions_layout.addWidget(self.view_results_button)
         
+        self.delete_device_button = QPushButton("Delete Device")
+        self.delete_device_button.setEnabled(False)
+        self.delete_device_button.setStyleSheet("color: #e76f51;")  # Red color for delete button
+        actions_layout.addWidget(self.delete_device_button)
+        
         layout.addRow("Actions:", actions_layout)
 
 class DevicesTab(QWidget):
@@ -145,6 +149,7 @@ class DevicesTab(QWidget):
         self.devices = []
         self.models = []
         self.selected_device_id = None
+        self.model_filter = None
         
         # Set up UI
         self.setup_ui()
@@ -221,6 +226,9 @@ class DevicesTab(QWidget):
         self.device_details_panel.view_results_button.clicked.connect(
             lambda: self.view_device_results(self.selected_device_id)
         )
+        self.device_details_panel.delete_device_button.clicked.connect(
+            lambda: self.delete_device(self.selected_device_id, self.get_device_name(self.selected_device_id))
+        )
         
         details_layout = QVBoxLayout(details_group)
         details_layout.addWidget(self.device_details_panel)
@@ -286,8 +294,6 @@ class DevicesTab(QWidget):
             
             # Make API request to register device
             self.api_service.register_device(device_name)
-            # This would normally be implemented in ApiService
-            
     
     def get_device_name(self, device_id):
         """Get the name of a device by ID"""
@@ -318,11 +324,94 @@ class DevicesTab(QWidget):
             # Show status message
             self.main_window.show_status_message(f"Assigning model to device {device_name}...", 3000)
     
+    def delete_device(self, device_id, device_name):
+        """Delete a device"""
+        # Ask for confirmation first
+        hard_delete = False
+        
+        message_box = QMessageBox(self)
+        message_box.setIcon(QMessageBox.Warning)
+        message_box.setWindowTitle("Delete Device")
+        message_box.setText(f"Are you sure you want to delete device '{device_name}'?")
+        message_box.setInformativeText("This will remove the device from the system. Device data will be preserved.")
+        
+        # Add hard delete checkbox
+        hard_delete_checkbox = QCheckBox("Permanently delete (cannot be undone)")
+        message_box.setCheckBox(hard_delete_checkbox)
+        
+        # Add buttons
+        message_box.setStandardButtons(QMessageBox.Yes | QMessageBox.No)
+        message_box.setDefaultButton(QMessageBox.No)
+        
+        # Show dialog
+        if message_box.exec() != QMessageBox.Yes:
+            return
+        
+        # Get hard delete option
+        hard_delete = hard_delete_checkbox.isChecked()
+        
+        # Show loading indicator
+        self.main_window.show_loading(f"Deleting device {device_name}...")
+        
+        # Make API request to delete device
+        self.api_service.delete_device(device_id, hard_delete)
+    
+    def set_model_filter(self, model_id):
+        """Set filter to show only devices using a specific model"""
+        self.model_filter = model_id
+        
+        # Update UI to show the filter is active
+        if model_id:
+            # Find the model name
+            model_name = "Unknown Model"
+            # We could request the specific model info, but for simplicity,
+            # let's check if we already have the models list
+            if hasattr(self.main_window, 'models_tab') and hasattr(self.main_window.models_tab, 'models'):
+                for model in self.main_window.models_tab.models:
+                    if model['model_id'] == model_id:
+                        model_name = model['project_name']
+                        break
+            
+            # Display a banner or label showing the active filter
+            if not hasattr(self, 'filter_banner'):
+                self.filter_banner = QLabel()
+                self.filter_banner.setStyleSheet("""
+                    background-color: #f0f0f0;
+                    border: 1px solid #d0d0d0;
+                    border-radius: 4px;
+                    padding: 8px;
+                    margin-bottom: 8px;
+                """)
+                self.layout().insertWidget(0, self.filter_banner)
+            
+            self.filter_banner.setText(f"Showing devices using model: <b>{model_name}</b> &nbsp;&nbsp; "
+                                      f"<a href='#'>Clear Filter</a>")
+            self.filter_banner.setVisible(True)
+            self.filter_banner.linkActivated.connect(self.clear_model_filter)
+        else:
+            # Hide the filter banner if no filter
+            if hasattr(self, 'filter_banner'):
+                self.filter_banner.setVisible(False)
+    
+    def clear_model_filter(self):
+        """Clear the model filter"""
+        self.model_filter = None
+        if hasattr(self, 'filter_banner'):
+            self.filter_banner.setVisible(False)
+        
+        # Refresh the devices list
+        self.refresh_devices()
+    
     def update_devices_table(self):
         """Update the devices table with current data"""
         self.devices_table.setRowCount(0)
         
-        for i, device in enumerate(self.devices):
+        # Filter devices if model_filter is set
+        filtered_devices = self.devices
+        if hasattr(self, 'model_filter') and self.model_filter:
+            filtered_devices = [d for d in self.devices if d.get('current_model_id') == self.model_filter]
+        
+        for i, device in enumerate(filtered_devices):
             self.devices_table.insertRow(i)
             
             # Device Name
@@ -378,7 +467,14 @@ class DevicesTab(QWidget):
         """Handle device selection in the table"""
         row = index.row()
         if row >= 0 and row < len(self.devices):
-            self.selected_device_id = self.devices[row]['device_id']
+            # Get the actual device from the filtered list if filtering is active
+            if hasattr(self, 'model_filter') and self.model_filter:
+                filtered_devices = [d for d in self.devices if d.get('current_model_id') == self.model_filter]
+                if row < len(filtered_devices):
+                    self.selected_device_id = filtered_devices[row]['device_id']
+            else:
+                self.selected_device_id = self.devices[row]['device_id']
+            
             self.update_device_details(self.selected_device_id)
     
     def update_device_details(self, device_id):
@@ -393,6 +489,7 @@ class DevicesTab(QWidget):
             self.device_details_panel.current_model_label.setText("N/A")
             self.device_details_panel.assign_model_button.setEnabled(False)
             self.device_details_panel.view_results_button.setEnabled(False)
+            self.device_details_panel.delete_device_button.setEnabled(False)
             return
         
         # Update details
@@ -425,6 +522,7 @@ class DevicesTab(QWidget):
         # Enable buttons
         self.device_details_panel.assign_model_button.setEnabled(True)
         self.device_details_panel.view_results_button.setEnabled(True)
+        self.device_details_panel.delete_device_button.setEnabled(True)
     
     def show_device_context_menu(self, pos):
         """Show context menu for device table"""
@@ -435,11 +533,19 @@ class DevicesTab(QWidget):
         
         # Get the device for the selected row
         row = selected_indexes[0].row()
-        if row < 0 or row >= len(self.devices):
-            return
-            
-        device_id = self.devices[row]['device_id']
-        device_name = self.devices[row]['device_name']
+        
+        # Get the actual device from the filtered list if filtering is active
+        if hasattr(self, 'model_filter') and self.model_filter:
+            filtered_devices = [d for d in self.devices if d.get('current_model_id') == self.model_filter]
+            if row < 0 or row >= len(filtered_devices):
+                return
+            device_id = filtered_devices[row]['device_id']
+            device_name = filtered_devices[row]['device_name']
+        else:
+            if row < 0 or row >= len(self.devices):
+                return
+            device_id = self.devices[row]['device_id']
+            device_name = self.devices[row]['device_name']
         
         # Create menu
         menu = QMenu(self)
@@ -453,13 +559,21 @@ class DevicesTab(QWidget):
         view_results_action.triggered.connect(lambda: self.view_device_results(device_id))
         menu.addAction(view_results_action)
         
+        # Add separator
+        menu.addSeparator()
+        
+        # Add delete action
+        delete_action = QAction("Delete Device", self)
+        delete_action.triggered.connect(lambda: self.delete_device(device_id, device_name))
+        menu.addAction(delete_action)
+        
         # Show menu
         menu.exec(self.devices_table.viewport().mapToGlobal(pos))
     
     def view_device_results(self, device_id):
         """View results for a specific device"""
         # Switch to Results tab
-        self.main_window.tab_widget.setCurrentIndex(5)  # Assuming Results is tab 5
+        self.main_window.tab_widget.setCurrentIndex(6)  # Assuming Results is tab 6 after our changes
         
         # Set device filter in Results tab
         if hasattr(self.main_window.results_tab, 'set_device_filter'):
@@ -504,6 +618,20 @@ class DevicesTab(QWidget):
                 "Model Assigned",
                 "Model assigned to device successfully"
             )
+            
+            # Refresh devices
+            self.refresh_devices()
+        
+        elif 'api/devices/' in endpoint and 'delete' in endpoint and success:
+            # Show success message
+            self.main_window.show_info_message(
+                "Device Deleted",
+                "Device deleted successfully"
+            )
+            
+            # If this is the currently selected device, clear selection
+            if self.selected_device_id in endpoint:
+                self.selected_device_id = None
             
             # Refresh devices
             self.refresh_devices()

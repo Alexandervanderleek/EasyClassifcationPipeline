@@ -154,6 +154,37 @@ class ApiService(QObject):
         with QMutexLocker(self.api_mutex):
             self.cache.clear()
     
+    def delete_device(self, device_id, hard_delete=False):
+        params = {'hard': 'true'} if hard_delete else None
+        self._execute_in_thread(f'api/devices/{device_id}', '_handle_request', 
+                            f'api/devices/{device_id}', 'DELETE', params=params)
+        
+        # Clear cache for devices
+        with QMutexLocker(self.api_mutex):
+            for key in list(self.cache.keys()):
+                if 'api/devices' in key:
+                    del self.cache[key]
+
+    def delete_model(self, model_id, hard_delete=False):
+        params = {'hard': 'true'} if hard_delete else None
+        self._execute_in_thread(f'api/models/{model_id}', '_handle_request', 
+                            f'api/models/{model_id}', 'DELETE', params=params)
+        
+        # Clear cache for models and devices (since they might reference this model)
+        with QMutexLocker(self.api_mutex):
+            for key in list(self.cache.keys()):
+                if 'api/models' in key or 'api/devices' in key:
+                    del self.cache[key]
+
+    def get_model_download_url(self, model_id):
+        """Get a pre-signed URL for downloading a model
+        
+        Args:
+            model_id: UUID of the model
+        """
+        self._execute_in_thread(f'api/models/{model_id}/download', '_handle_request', 
+                            f'api/models/{model_id}/download', 'GET')
+        
     def _handle_request(self, endpoint, method, data=None, files=None, json_data=None, params=None):
         """Handle API requests with error handling - NO signal emissions"""
         with QMutexLocker(self.api_mutex):
