@@ -11,8 +11,8 @@ YELLOW='\033[0;33m'
 NC='\033[0m' # No Color
 
 # Configuration - Edit these variables
-API_URL="http://awseb--awseb-kebw5lnvlcta-858866289.eu-west-1.elb.amazonaws.com"
-API_KEY="alexsnewsecretkey"
+API_URL=""
+API_KEY=""
 INTERVAL=300  # Capture interval in seconds
 THRESHOLD=0.5  # Confidence threshold
 INSTALL_DIR="/home/pi/classifier"
@@ -69,7 +69,7 @@ Description=Image Classifier Service
 After=network.target
 
 [Service]
-User=pi
+User=admin
 WorkingDirectory=$INSTALL_DIR
 ExecStart=/usr/bin/python3 $INSTALL_DIR/pi_client.py --api $API_URL --interval $INTERVAL --threshold $THRESHOLD --apikey $API_KEY
 Restart=always
