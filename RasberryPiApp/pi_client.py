@@ -35,7 +35,8 @@ class PiClassifier:
         self.device_id = self._load_or_register_device()
         self.capture_interval = capture_interval  # seconds between captures
         self.confidence_threshold = confidence_threshold
-       
+        
+        # Paths
         self.base_dir = os.path.dirname(os.path.abspath(__file__))
         self.models_dir = os.path.join(self.base_dir, "models")
         self.images_dir = os.path.join(self.base_dir, "images")
@@ -178,46 +179,71 @@ class PiClassifier:
             model_dir = os.path.join(self.models_dir, model_id)
             os.makedirs(model_dir, exist_ok=True)
             
-            # Download the model file
-            response = requests.get(f"{self.api_url}/api/models/{model_id}/download", stream=True,
-                headers=self.headers)
+            # First, get the download URL
+            response = requests.get(f"{self.api_url}/api/models/{model_id}/download")
             
-            if response.status_code == 200:
-                model_path = os.path.join(model_dir, metadata['model_filename'])
+            if response.status_code != 200:
+                logger.error(f"Error getting download URL: {response.text}")
+                return False
                 
-                with open(model_path, 'wb') as f:
-                    for chunk in response.iter_content(chunk_size=8192):
-                        f.write(chunk)
-                        
-                # Save metadata
-                metadata_path = os.path.join(model_dir, "metadata.json")
-                with open(metadata_path, 'w') as f:
-                    json.dump(metadata, f, indent=4)
+            # Parse the JSON response to get the download URL
+            response_data = response.json()
+            
+            if not response_data.get('success'):
+                logger.error(f"Error getting download URL: {response_data.get('error', 'Unknown error')}")
+                return False
+                
+            download_url = response_data.get('download_url')
+            
+            if not download_url:
+                logger.error("No download URL provided in the response")
+                return False
+            
+            logger.info(f"Got pre-signed download URL, expires in {response_data.get('expires_in', 'unknown')} seconds")
+                
+            # Now download the actual model file using the pre-signed URL
+            model_response = requests.get(download_url, stream=True)
+            
+            if model_response.status_code != 200:
+                logger.error(f"Error downloading model from URL: {model_response.status_code}")
+                return False
+                
+            # Use a standard filename based on the model ID
+            model_filename = f"model_{model_id}.tflite"
+            model_path = os.path.join(model_dir, model_filename)
+            
+            with open(model_path, 'wb') as f:
+                for chunk in model_response.iter_content(chunk_size=8192):
+                    f.write(chunk)
                     
-                # Update current model info
-                self.current_model_id = model_id
-                self.current_model_path = model_path
-                self.current_metadata = metadata
-                
-                # Save current model info
-                with open(os.path.join(self.base_dir, "current_model.json"), 'w') as f:
-                    json.dump({
-                        "model_id": model_id,
-                        "model_path": model_path,
-                        "metadata": metadata
-                    }, f, indent=4)
+            logger.info(f"Model file downloaded and saved to {model_path}")
                     
-                # Load interpreter
-                success = self._load_interpreter()
+            # Save metadata
+            metadata_path = os.path.join(model_dir, "metadata.json")
+            with open(metadata_path, 'w') as f:
+                json.dump(metadata, f, indent=4)
                 
-                if success:
-                    logger.info(f"Model {model_id} downloaded and loaded successfully")
-                    return True
-                else:
-                    logger.error(f"Failed to load interpreter for model {model_id}")
-                    return False
+            # Update current model info
+            self.current_model_id = model_id
+            self.current_model_path = model_path
+            self.current_metadata = metadata
+            
+            # Save current model info
+            with open(os.path.join(self.base_dir, "current_model.json"), 'w') as f:
+                json.dump({
+                    "model_id": model_id,
+                    "model_path": model_path,
+                    "metadata": metadata
+                }, f, indent=4)
+                
+            # Load interpreter
+            success = self._load_interpreter()
+            
+            if success:
+                logger.info(f"Model {model_id} downloaded and loaded successfully")
+                return True
             else:
-                logger.error(f"Error downloading model: {response.text}")
+                logger.error(f"Failed to load interpreter for model {model_id}")
                 return False
                 
         except Exception as e:
@@ -372,8 +398,7 @@ class PiClassifier:
                 self.capture_and_classify()
                 
             # Wait for the next interval
-            time.sleep(self.capture_interval)
-            
+            time.sleep(self.capture_interval)           
 def main():
     """
     Main entry point

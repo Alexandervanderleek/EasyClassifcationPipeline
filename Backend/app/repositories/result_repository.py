@@ -1,3 +1,4 @@
+import datetime
 from app import db
 from app.models import Result, Device, Model
 
@@ -82,7 +83,7 @@ class ResultRepository:
         )
         
         # Update device last_active time
-        device.last_active = result.timestamp
+        device.last_active = datetime.utcnow()
         
         db.session.add(result)
         db.session.commit()
