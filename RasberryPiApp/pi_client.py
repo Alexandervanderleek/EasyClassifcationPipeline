@@ -25,14 +25,17 @@ logging.basicConfig(
 logger = logging.getLogger("PiClassifier")
 
 class PiClassifier:
-    def __init__(self, api_url, device_name=None, capture_interval=60, confidence_threshold=0.7):
+    def __init__(self, api_url, api_key, device_name=None, capture_interval=60, confidence_threshold=0.7):
         self.api_url = api_url
+        self.headers = {
+            'X-API-Key': api_key
+        }
+        
         self.device_name = device_name or f"Pi-{hex(uuid.getnode())[2:]}"
         self.device_id = self._load_or_register_device()
         self.capture_interval = capture_interval  # seconds between captures
         self.confidence_threshold = confidence_threshold
-        
-        # Paths
+       
         self.base_dir = os.path.dirname(os.path.abspath(__file__))
         self.models_dir = os.path.join(self.base_dir, "models")
         self.images_dir = os.path.join(self.base_dir, "images")
@@ -71,7 +74,8 @@ class PiClassifier:
         try:
             response = requests.post(
                 f"{self.api_url}/api/devices/register",
-                json={"device_name": self.device_name}
+                json={"device_name": self.device_name},
+                headers=self.headers
             )
             
             if response.status_code == 200:
@@ -147,7 +151,8 @@ class PiClassifier:
         try:
             response = requests.post(
                 f"{self.api_url}/api/devices/{self.device_id}/heartbeat",
-                json={"status": "running" if self.is_running else "idle"}
+                json={"status": "running" if self.is_running else "idle"},
+                headers=self.headers
             )
             
             if response.status_code == 200:
@@ -174,7 +179,8 @@ class PiClassifier:
             os.makedirs(model_dir, exist_ok=True)
             
             # Download the model file
-            response = requests.get(f"{self.api_url}/api/models/{model_id}/download", stream=True)
+            response = requests.get(f"{self.api_url}/api/models/{model_id}/download", stream=True,
+                headers=self.headers)
             
             if response.status_code == 200:
                 model_path = os.path.join(model_dir, metadata['model_filename'])
@@ -305,7 +311,8 @@ class PiClassifier:
                 "confidence": float(confidence)
             }
             
-            response = requests.post(f"{self.api_url}/api/results", json=data)
+            response = requests.post(f"{self.api_url}/api/results", json=data,
+                headers=self.headers)
             
             if response.status_code == 200:
                 logger.info("Result uploaded successfully")
@@ -373,15 +380,17 @@ def main():
     """
     parser = argparse.ArgumentParser(description='Raspberry Pi Image Classifier')
     parser.add_argument('--api', type=str, default='http://localhost:5000', help='API server URL')
+    parser.add_argument('--apikey', type=str, help='Api key for your backend server')
     parser.add_argument('--name', type=str, help='Device name (default: Pi-<mac>)')
     parser.add_argument('--interval', type=int, default=60, help='Capture interval in seconds')
-    parser.add_argument('--threshold', type=float, default=0.7, help='Confidence threshold for reporting')
-    
+    parser.add_argument('--threshold', type=float, default=0.5, help='Confidence threshold for reporting')
+
     args = parser.parse_args()
     
     # Create and start the classifier
     classifier = PiClassifier(
         api_url=args.api,
+        api_key=args.apikey,
         device_name=args.name,
         capture_interval=args.interval,
         confidence_threshold=args.threshold

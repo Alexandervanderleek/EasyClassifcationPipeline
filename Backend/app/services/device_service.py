@@ -124,10 +124,11 @@ class DeviceService:
                 if model:
                     should_download = True
             
+            model_data = model.to_dict() if model else None
             return {
                 'model_id': str(model_id) if model_id else None,
                 'should_download': should_download,
-                'metadata': model.metadata if model else None
+                'metadata': model_data['metadata'] if model_data else None  # Correctly access the metadata
             }
         except Exception as e:
             current_app.logger.error(f"Error updating heartbeat: {str(e)}")
