@@ -1,4 +1,4 @@
-import datetime
+from datetime import datetime
 from app import db
 from app.models import Result, Device, Model
 
