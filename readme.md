@@ -37,7 +37,7 @@ This system allows you to quickly create custom image classifiers for specific u
 
 - Python 3.8+ installed on all systems
 - Basic familiarity with command line interfaces
-- For edge devices: Raspberry Pi 3+ or similar with camera module
+- For edge devices: Raspberry Pi 2+ or similar with camera module
 - Network connectivity between all components
 
 ### 1. Backend API Setup
