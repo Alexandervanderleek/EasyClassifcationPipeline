@@ -2,8 +2,6 @@
 
 A complete system for training, deploying, and managing custom image classification models on edge devices.
 
-![ML Classifier Trainer Main Screen](readmeassets/1.png)
-
 ## Overview
 
 ML Classifier Trainer is an end-to-end solution for creating binary image classifiers without writing code. The system consists of three main components:
@@ -131,8 +129,6 @@ On first run, you'll be prompted to:
 1. Enter the API endpoint (URL of your backend server)
 2. Enter your API key
 
-![First Run Setup](placeholder_images/first_run.png)
-
 ### 3. Raspberry Pi Device Setup
 
 The Raspberry Pi client automatically captures images from the camera, classifies them using the downloaded model, and uploads results to the API.
@@ -196,8 +192,6 @@ The client will automatically:
 3. Click **New Project** and enter a project name
 4. A new project folder will be created with the necessary structure
 
-![Create New Project](placeholder_images/new_project.png)
-
 ### Collecting Training Data
 
 #### Using Camera
@@ -208,16 +202,12 @@ The client will automatically:
 4. Click **Capture Positive** to capture positive examples
 5. Click **Capture Negative** to capture negative examples
 
-![Camera Capture](placeholder_images/camera_capture.png)
-
 #### Importing Images
 
 1. Go to the **Collect Images** tab
 2. Select the **Import Images** section
 3. Choose either **Import Folder** or **Import Files**
 4. Repeat for both positive and negative examples
-
-![Import Images](placeholder_images/import_images.png)
 
 ### Training a Model
 
@@ -227,8 +217,6 @@ The client will automatically:
 4. Monitor training progress and log
 5. Once training is complete, click **Convert to TFLite**
 
-![Train Model](placeholder_images/train_model.png)
-
 ### Deploying a Model
 
 1. Go to the **Deploy Model** tab
@@ -236,23 +224,17 @@ The client will automatically:
 3. Click **Deploy to Cloud**
 4. The model will be uploaded to the backend server
 
-![Deploy Model](placeholder_images/deploy_model.png)
-
 ### Managing Devices
 
 1. Go to the **Devices** tab
 2. Click **Register New Device** or manage existing devices
 3. Use **Assign Model** to deploy a model to a specific device
 
-![Manage Devices](placeholder_images/devices.png)
-
 ### Viewing Results
 
 1. Go to the **Results** tab
 2. Filter by device, model, or other criteria
 3. View classification results and statistics
-
-![View Results](placeholder_images/results.png)
 
 ## Technologies Used
 
