@@ -2,7 +2,7 @@
 
 A complete system for training, deploying, and managing custom image classification models on edge devices.
 
-![ML Classifier Trainer Main Screen](placeholder_images/main_screen.png)
+![ML Classifier Trainer Main Screen](readmeassets/1.png)
 
 ## Overview
 
@@ -50,8 +50,8 @@ The backend server handles model storage, device management, and result collecti
 
 ```bash
 # Clone the server repository
-git clone https://github.com/yourusername/ml-classifier-api.git
-cd ml-classifier-api/Backend
+git clone https://github.com/Alexandervanderleek/EasyClassifcationPipeline.git
+cd EasyClassificationPipeline/Backend
 
 # Create and activate virtual environment
 python -m venv venv
@@ -93,7 +93,6 @@ The project includes a complete Terraform infrastructure setup for AWS and a Git
    - `AWS_SECRET_ACCESS_KEY`
    - `EB_APP_NAME`
    - `EB_ENV_NAME`
-3. Push to your repository to trigger the GitHub Actions workflow
 
 The infrastructure will deploy to AWS Elastic Beanstalk with:
 
@@ -107,8 +106,8 @@ The infrastructure will deploy to AWS Elastic Beanstalk with:
 
 ```bash
 # Clone the desktop app repository
-git clone https://github.com/yourusername/ml-classifier-trainer.git
-cd ml-classifier-trainer
+git clone https://github.com/Alexandervanderleek/EasyClassifcationPipeline.git
+cd EasyClassifcation/DesktopApp
 
 # Create and activate virtual environment
 python -m venv venv
@@ -123,7 +122,7 @@ python main.py
 
 #### Pre-built Binaries
 
-Download the pre-built application for your platform from the [Releases](https://github.com/yourusername/ml-classifier-trainer/releases) page.
+Or download the pre-built application for your platform from the [Releases](https://github.com/Alexandervanderleek/EasyClassifcationPipeline/releases) page.
 
 #### First Run Setup
 
@@ -145,7 +144,7 @@ The Raspberry Pi client automatically captures images from the camera, classifie
 ssh admin@your-pi-ip-address
 
 # Download the installation script
-wget https://github.com/yourusername/ml-classifier-device/raw/main/setup_scripts/pi_install_script.sh
+wget https://github.com/Alexandervanderleek/EasyClassifcationPipeline/tree/main/RasberryPiApp/setup_scripts/pi_install_script.sh
 
 # Make the script executable
 chmod +x pi_install_script.sh
@@ -167,8 +166,8 @@ If you prefer manual installation:
 
 ```bash
 # Clone the device repository
-git clone https://github.com/yourusername/ml-classifier-device.git
-cd ml-classifier-device/RasberryPiApp
+git clone https://github.com/Alexandervanderleek/EasyClassifcationPipeline.git
+cd EasyClassifcationPipeline/RasberryPiApp
 
 # Install required packages
 sudo apt-get update
