@@ -1,12 +1,6 @@
 name: Deploy Backend to AWS
 
 on:
-  push:
-    branches:
-      - main
-    paths:
-      - "Backend/**" # Only trigger on changes to Backend directory
-      - ".github/workflows/deploy.yml" # Or changes to this workflow
   workflow_dispatch: # Allow manual trigger regardless of changed files
 
 env:
