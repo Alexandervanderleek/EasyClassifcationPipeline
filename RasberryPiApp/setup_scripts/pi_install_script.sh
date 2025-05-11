@@ -2,19 +2,18 @@
 # Classifier Installation Script for Raspberry Pi
 # This script sets up everything needed for the classifier service
 
-set -e  # Exit on any error
+set -e 
 
-# ANSI color codes
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[0;33m'
-NC='\033[0m' # No Color
+NC='\033[0m' 
 
 # Configuration - Edit these variables
 API_URL=""
 API_KEY=""
-INTERVAL=300  # Capture interval in seconds
-THRESHOLD=0.5  # Confidence threshold
+INTERVAL=300  
+THRESHOLD=0.5  
 INSTALL_DIR="/home/pi/classifier"
 
 echo -e "${GREEN}=========================================${NC}"
@@ -50,14 +49,11 @@ mkdir -p "$INSTALL_DIR"
 chown admin:admin "$INSTALL_DIR"
 
 echo -e "\n${GREEN}Downloading classifier scripts...${NC}"
-# Note: In a real scenario, you would curl/wget these from a GitHub repo
-# For now, we'll assume the files are already on the system
 
 # If downloading from the web:
 # wget -O "$INSTALL_DIR/pi_client.py" https://your-repo/pi_client.py
 # wget -O "$INSTALL_DIR/classifier.service" https://your-repo/classifier.service
 
-# Create needed directories
 mkdir -p "$INSTALL_DIR/models"
 mkdir -p "$INSTALL_DIR/images"
 chown -R admin:admin "$INSTALL_DIR"

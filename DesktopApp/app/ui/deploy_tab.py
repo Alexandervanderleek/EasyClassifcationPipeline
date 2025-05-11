@@ -1,6 +1,3 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-
 """
 Deploy Tab - Deploy models to the cloud API
 """
@@ -23,24 +20,19 @@ class DeployTab(QWidget):
         self.config = main_window.config
         self.api_service = main_window.api_service
         
-        # Connect signals
         self.api_service.request_started.connect(self.on_request_started)
         self.api_service.request_finished.connect(self.on_request_finished)
         
-        # Set up UI
         self.setup_ui()
         
-        # State variables
         self.project_path = None
         self.deployed_model_id = None
         self.progress_dialog = None
     
     def setup_ui(self):
         """Set up the user interface"""
-        # Main layout
         layout = QVBoxLayout(self)
         
-        # Model info group
         info_group = QGroupBox("Model Information")
         info_layout = QFormLayout(info_group)
         
@@ -55,7 +47,6 @@ class DeployTab(QWidget):
         
         layout.addWidget(info_group)
         
-        # Deploy group
         deploy_group = QGroupBox("Deploy Model")
         deploy_layout = QVBoxLayout(deploy_group)
         
@@ -73,7 +64,6 @@ class DeployTab(QWidget):
         
         deploy_layout.addLayout(deploy_button_layout)
         
-        # Deployment status
         deployment_layout = QFormLayout()
         
         self.deploy_status_label = QLabel("Not deployed")
@@ -86,7 +76,6 @@ class DeployTab(QWidget):
         
         layout.addWidget(deploy_group)
         
-        # Test results group
         test_group = QGroupBox("Test Results")
         test_layout = QVBoxLayout(test_group)
         
@@ -95,7 +84,6 @@ class DeployTab(QWidget):
         
         layout.addWidget(test_group)
         
-        # Add stretch to push everything to the top
         layout.addStretch()
     
     def on_project_changed(self, project_name, project_path):
@@ -105,7 +93,6 @@ class DeployTab(QWidget):
     
     def on_tab_selected(self):
         """Handle when this tab is selected"""
-        # Update API endpoint label
         self.api_endpoint_label.setText(self.config.api_endpoint)
         
         if self.project_path:
@@ -142,7 +129,6 @@ class DeployTab(QWidget):
             self.main_window.show_error_message("Error", "No project selected")
             return
         
-        # Check if TFLite model exists
         tflite_path = os.path.join(self.project_path, "models", "model.tflite")
         metadata_path = os.path.join(self.project_path, "models", "metadata.json")
         
@@ -154,7 +140,6 @@ class DeployTab(QWidget):
             self.main_window.show_error_message("Error", "Model metadata not found")
             return
         
-        # Confirm upload
         confirm = self.main_window.confirm_action(
             "Deploy Model",
             "This will upload the model to the API server. Continue?"
@@ -163,7 +148,6 @@ class DeployTab(QWidget):
         if not confirm:
             return
         
-        # Upload the model
         self.api_service.upload_model(tflite_path, metadata_path)
     
     def test_model(self):
@@ -172,7 +156,6 @@ class DeployTab(QWidget):
             self.main_window.show_error_message("Error", "No project selected")
             return
         
-        # Open file dialog
         file_path, _ = QFileDialog.getOpenFileName(
             self,
             "Select Test Image",
@@ -183,7 +166,6 @@ class DeployTab(QWidget):
         if not file_path:
             return
         
-        # Test model
         success, message, result = self.main_window.model_service.test_model(
             self.project_path,
             file_path
@@ -199,19 +181,16 @@ class DeployTab(QWidget):
     @Slot(str)
     def on_request_started(self, endpoint):
         """Handle API request started signal"""
-        print(endpoint)
     
     @Slot(str, bool, object)
     def on_request_finished(self, endpoint, success, data):
         """Handle API request finished signal"""
         if 'api/models/create' in endpoint:            
             if success:
-                # Update deployment status
                 self.deploy_status_label.setText("Deployed")
                 self.model_id_label.setText(data.get('model_id', 'Unknown'))
                 self.deployed_model_id = data.get('model_id')
                 
-                # Save model ID to project
                 try:
                     deploy_info = {
                         'model_id': data.get('model_id'),

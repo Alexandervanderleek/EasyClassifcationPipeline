@@ -2,7 +2,6 @@ from flask import Blueprint, request, jsonify
 from app.services import DeviceService
 from app.utils.auth import require_api_key
 
-# Create blueprint
 device_bp = Blueprint('devices', __name__)
 
 @device_bp.route('', methods=['GET'])
@@ -52,7 +51,6 @@ def set_device_model(device_id):
         return jsonify({'error': 'Missing model ID'}), 400
     
     model_id = data['model_id']
-    # Allow null/None to unassign model
     if model_id == 'null' or model_id == 'None' or model_id is None:
         model_id = None
     
@@ -84,7 +82,6 @@ def delete_device(device_id):
     """
     Delete/deregister a device (soft delete by default)
     """
-    # Check for hard delete option
     hard_delete = request.args.get('hard', 'false').lower() == 'true'
     
     result = DeviceService.delete_device(str(device_id), hard_delete)

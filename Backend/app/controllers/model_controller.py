@@ -2,7 +2,6 @@ from flask import Blueprint, request, jsonify
 from app.services import ModelService
 from app.utils.auth import require_api_key
 
-# Create blueprint
 model_bp = Blueprint('models', __name__)
 
 @model_bp.route('', methods=['GET'])
@@ -65,7 +64,6 @@ def delete_model(model_id):
     """
     Delete a model (soft delete by default)
     """
-    # Check for hard delete option
     hard_delete = request.args.get('hard', 'false').lower() == 'true'
     
     result = ModelService.delete_model(str(model_id), hard_delete)

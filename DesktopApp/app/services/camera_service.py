@@ -1,6 +1,3 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-
 """
 Camera Service - Handles camera operations
 """
@@ -15,7 +12,6 @@ from PySide6.QtCore import QObject, Signal, QThread, QMutex, QMutexLocker
 class CameraThread(QThread):
     """Thread for camera capture to avoid blocking the UI"""
     
-    # Define signal for frame capture
     frame_ready = Signal(np.ndarray)
     error_occurred = Signal(str)
     
@@ -42,14 +38,12 @@ class CameraThread(QThread):
             while self.is_running():
                 ret, frame = self.cap.read()
                 if ret:
-                    # Convert BGR to RGB for Qt
                     frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
                     self.frame_ready.emit(frame_rgb)
                 else:
                     self.error_occurred.emit("Failed to capture frame from camera")
                     break
                 
-                # Sleep to control frame rate
                 time.sleep(1.0 / self.frame_rate)
                 
         except Exception as e:
@@ -67,7 +61,7 @@ class CameraThread(QThread):
         with QMutexLocker(self.mutex):
             self.running = False
         
-        self.wait()  # Wait for thread to finish
+        self.wait()
         self.release_camera()
     
     def release_camera(self):
@@ -79,12 +73,11 @@ class CameraThread(QThread):
 class CameraService(QObject):
     """Service for camera operations"""
     
-    # Define signals
-    camera_started = Signal(bool, str)  # success, message
+    camera_started = Signal(bool, str)
     camera_stopped = Signal()
-    frame_captured = Signal(np.ndarray)  # RGB frame
-    image_saved = Signal(bool, str)  # success, path
-    error_occurred = Signal(str)  # error message
+    frame_captured = Signal(np.ndarray)
+    image_saved = Signal(bool, str) 
+    error_occurred = Signal(str) 
     
     def __init__(self, config):
         super().__init__()
@@ -105,13 +98,11 @@ class CameraService(QObject):
                 self.config.camera_index = camera_index
         
         try:
-            # Create and start the camera thread
             self.camera_thread = CameraThread(camera_index)
             self.camera_thread.frame_ready.connect(self.on_frame_ready)
             self.camera_thread.error_occurred.connect(self.on_camera_error)
             self.camera_thread.start()
             
-            # Emit signal
             self.camera_started.emit(True, "Camera started")
             return True, "Camera started"
             
@@ -127,7 +118,6 @@ class CameraService(QObject):
                 self.camera_thread = None
                 self.current_frame = None
                 
-                # Emit signal
                 self.camera_stopped.emit()
     
     def capture_image(self, class_type, project_path):
@@ -136,26 +126,21 @@ class CameraService(QObject):
             if not self.current_frame is not None:
                 return False, "No camera frame available"
             
-            # Make a copy of the current frame to avoid race conditions
             frame_copy = self.current_frame.copy() if self.current_frame is not None else None
         
         if frame_copy is None:
             return False, "No camera frame available"
         
         try:
-            # Ensure the class directory exists
             class_dir = os.path.join(project_path, "dataset", class_type)
             os.makedirs(class_dir, exist_ok=True)
             
-            # Save the image
             timestamp = int(time.time() * 1000)
             img_path = os.path.join(class_dir, f"img_{timestamp}.jpg")
             
-            # Convert RGB back to BGR for OpenCV
             frame_bgr = cv2.cvtColor(frame_copy, cv2.COLOR_RGB2BGR)
             cv2.imwrite(img_path, frame_bgr)
             
-            # Emit signal
             self.image_saved.emit(True, img_path)
             return True, img_path
             

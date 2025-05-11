@@ -4,7 +4,6 @@ from flask_cors import CORS
 from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
 
-# Initialize extensions
 db = SQLAlchemy()
 migrate = Migrate()
 
@@ -20,17 +19,13 @@ def create_app(config_name=None):
     """
     app = Flask(__name__)
     
-    # Configure the app
     if config_name is None:
         config_name = os.getenv('FLASK_ENV', 'development')
     
-    # Ensure config_name is capitalized for class name
     config_class = f"{config_name.capitalize()}Config"
     
-    # Import config module here to avoid circular imports
     from app.config import DevelopmentConfig, TestingConfig, ProductionConfig
     
-    # Set configuration based on environment
     if config_name.lower() == 'development':
         app.config.from_object('app.config.DevelopmentConfig')
     elif config_name.lower() == 'testing':
@@ -38,15 +33,12 @@ def create_app(config_name=None):
     elif config_name.lower() == 'production':
         app.config.from_object('app.config.ProductionConfig')
     else:
-        # Default to development
         app.config.from_object('app.config.DevelopmentConfig')
     
-    # Initialize extensions with app
     db.init_app(app)
     migrate.init_app(app, db)
     CORS(app)
     
-    # Register blueprints/routes
     from app.controllers.device_controller import device_bp
     from app.controllers.model_controller import model_bp
     from app.controllers.result_controller import result_bp
@@ -55,10 +47,8 @@ def create_app(config_name=None):
     app.register_blueprint(model_bp, url_prefix='/api/models')
     app.register_blueprint(result_bp, url_prefix='/api/results')
     
-    # Register error handlers
     register_error_handlers(app)
     
-    # Simple health check endpoint
     @app.route('/api/health', methods=['GET'])
     def health_check():
         """Simple health check endpoint for testing API connectivity"""

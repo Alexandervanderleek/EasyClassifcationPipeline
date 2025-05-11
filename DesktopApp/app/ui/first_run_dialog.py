@@ -7,7 +7,7 @@ from PySide6.QtCore import Qt, Signal
 class FirstRunDialog(QDialog):
     """Dialog for first run setup to collect API credentials"""
     
-    setup_complete = Signal(str, str)  # api_url, api_key
+    setup_complete = Signal(str, str)  
     
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -16,10 +16,8 @@ class FirstRunDialog(QDialog):
         self.setWindowFlags(self.windowFlags() & ~Qt.WindowContextHelpButtonHint)
         self.setModal(True)
         
-        # Create layout
         layout = QVBoxLayout(self)
         
-        # Add welcome message
         welcome_label = QLabel(
             "Welcome to the ML Classifier Trainer!\n\n"
             "Before you get started, please configure your API connection settings. "
@@ -28,15 +26,12 @@ class FirstRunDialog(QDialog):
         welcome_label.setWordWrap(True)
         layout.addWidget(welcome_label)
         
-        # Create form layout
         form_layout = QFormLayout()
         
-        # API URL
         self.api_url_input = QLineEdit()
         self.api_url_input.setPlaceholderText("http://your-server.com:5000")
         form_layout.addRow("API Server URL:", self.api_url_input)
         
-        # API Key
         self.api_key_input = QLineEdit()
         self.api_key_input.setPlaceholderText("Your API key")
         self.api_key_input.setEchoMode(QLineEdit.Password)
@@ -44,12 +39,10 @@ class FirstRunDialog(QDialog):
         
         layout.addLayout(form_layout)
         
-        # Add test connection button
         test_button = QPushButton("Test Connection")
         test_button.clicked.connect(self.test_connection)
         layout.addWidget(test_button)
         
-        # Add buttons
         button_layout = QHBoxLayout()
         
         self.save_button = QPushButton("Save and Continue")
@@ -74,11 +67,9 @@ class FirstRunDialog(QDialog):
             QMessageBox.warning(self, "Missing Information", "Please enter your API key")
             return
         
-        # Create a simple test connection indicator
         import requests
         from PySide6.QtWidgets import QProgressDialog
         
-        # Show a progress dialog
         progress = QProgressDialog("Testing connection...", "Cancel", 0, 0, self)
         progress.setWindowTitle("Connection Test")
         progress.setWindowModality(Qt.WindowModal)
@@ -87,12 +78,10 @@ class FirstRunDialog(QDialog):
         progress.show()
         
         try:
-            # Attempt to connect to the API server
             response = requests.get(f"{api_url}/api/health", 
                                   headers={"X-API-Key": api_key},
                                   timeout=10)
             
-            # Close progress dialog
             progress.close()
             
             if response.status_code == 200:
@@ -103,7 +92,6 @@ class FirstRunDialog(QDialog):
                                   f"Connection failed with status code: {response.status_code}\n\n"
                                   f"Message: {response.text}")
         except Exception as e:
-            # Close progress dialog
             progress.close()
             
             QMessageBox.critical(self, "Connection Error", 
@@ -122,8 +110,6 @@ class FirstRunDialog(QDialog):
             QMessageBox.warning(self, "Missing Information", "Please enter your API key")
             return
         
-        # Emit signal with settings
         self.setup_complete.emit(api_url, api_key)
         
-        # Close dialog
         self.accept()

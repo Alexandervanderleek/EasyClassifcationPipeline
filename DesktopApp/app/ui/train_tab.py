@@ -1,6 +1,3 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-
 """
 Train Tab - Train and convert models
 """
@@ -22,7 +19,6 @@ class TrainTab(QWidget):
         self.config = main_window.config
         self.model_service = main_window.model_service
         
-        # Connect signals
         self.model_service.training_started.connect(self.on_training_started)
         self.model_service.training_progress.connect(self.on_training_progress)
         self.model_service.training_finished.connect(self.on_training_finished)
@@ -31,28 +27,22 @@ class TrainTab(QWidget):
         self.model_service.conversion_progress.connect(self.on_conversion_progress)
         self.model_service.conversion_finished.connect(self.on_conversion_finished)
         
-        # Set up UI
         self.setup_ui()
         
-        # State variables
         self.project_path = None
         self.is_training = False
         self.is_converting = False
     
     def setup_ui(self):
         """Set up the user interface"""
-        # Main layout
         layout = QVBoxLayout(self)
         
-        # Create a splitter for top and bottom sections
         splitter = QSplitter(Qt.Vertical)
         layout.addWidget(splitter)
         
-        # Top widget
         top_widget = QWidget()
         top_layout = QVBoxLayout(top_widget)
         
-        # Parameters group
         params_group = QGroupBox("Training Parameters")
         params_layout = QFormLayout(params_group)
         
@@ -78,7 +68,6 @@ class TrainTab(QWidget):
         
         top_layout.addWidget(params_group)
         
-        # Buttons group
         buttons_group = QGroupBox("Actions")
         buttons_layout = QHBoxLayout(buttons_group)
         
@@ -93,7 +82,6 @@ class TrainTab(QWidget):
         
         top_layout.addWidget(buttons_group)
         
-        # Progress group
         progress_group = QGroupBox("Progress")
         progress_layout = QVBoxLayout(progress_group)
         
@@ -107,7 +95,6 @@ class TrainTab(QWidget):
         
         top_layout.addWidget(progress_group)
         
-        # Status group
         status_group = QGroupBox("Model Status")
         status_layout = QFormLayout(status_group)
         
@@ -119,10 +106,8 @@ class TrainTab(QWidget):
         
         top_layout.addWidget(status_group)
         
-        # Add top widget to splitter
         splitter.addWidget(top_widget)
         
-        # Bottom widget - Log
         bottom_widget = QWidget()
         bottom_layout = QVBoxLayout(bottom_widget)
         
@@ -135,10 +120,8 @@ class TrainTab(QWidget):
         
         bottom_layout.addWidget(log_group)
         
-        # Add bottom widget to splitter
         splitter.addWidget(bottom_widget)
         
-        # Set initial splitter sizes
         splitter.setSizes([300, 200])
     
     def on_project_changed(self, project_name, project_path):
@@ -146,7 +129,6 @@ class TrainTab(QWidget):
         self.project_path = project_path
         self.update_model_status()
         
-        # Clear log
         self.log_text.clear()
     
     def on_tab_selected(self):
@@ -183,12 +165,10 @@ class TrainTab(QWidget):
         if self.is_training:
             return
         
-        # Get parameters
         epochs = self.epochs_spinbox.value()
         batch_size = self.batch_size_spinbox.value()
         learning_rate = self.learning_rate_spinbox.value()
         
-        # Start training
         success, message = self.model_service.train_model(
             self.project_path,
             epochs,
@@ -208,26 +188,22 @@ class TrainTab(QWidget):
         if self.is_converting:
             return
         
-        # Start conversion
         success, message = self.model_service.convert_to_tflite(self.project_path)
         
         if not success:
             self.main_window.show_error_message("Conversion Error", message)
     
-    # Signal handlers
     
     @Slot()
     def on_training_started(self):
         """Handle training started signal"""
         self.is_training = True
         
-        # Update UI
         self.train_button.setEnabled(False)
         self.convert_button.setEnabled(False)
         self.progress_bar.setValue(0)
         self.progress_label.setText("Training in progress...")
         
-        # Clear log
         self.log_text.clear()
         self.log_text.append("Training started...\n")
         
@@ -236,14 +212,11 @@ class TrainTab(QWidget):
     @Slot(int, dict)
     def on_training_progress(self, epoch, logs):
         """Handle training progress signal"""
-        # Update progress bar
         progress = int(epoch / self.epochs_spinbox.value() * 100)
         self.progress_bar.setValue(progress)
         
-        # Update progress label
         self.progress_label.setText(f"Training epoch {epoch}/{self.epochs_spinbox.value()}")
         
-        # Update log
         log_text = f"Epoch {epoch}/{self.epochs_spinbox.value()}: "
         log_text += f"loss={logs.get('loss', 0):.4f}, "
         log_text += f"accuracy={logs.get('accuracy', 0):.4f}, "
@@ -252,7 +225,6 @@ class TrainTab(QWidget):
         
         self.log_text.append(log_text)
         
-        # Scroll to bottom
         self.log_text.ensureCursorVisible()
     
     @Slot(bool, str)
@@ -260,7 +232,6 @@ class TrainTab(QWidget):
         """Handle training finished signal"""
         self.is_training = False
         
-        # Update UI
         self.train_button.setEnabled(True)
         self.progress_label.setText(message)
         
@@ -268,7 +239,6 @@ class TrainTab(QWidget):
             self.log_text.append("\nTraining completed successfully!")
             self.main_window.show_status_message("Training completed", 3000)
             
-            # Update model status
             self.update_model_status()
         else:
             self.log_text.append(f"\nTraining failed: {message}")
@@ -279,7 +249,6 @@ class TrainTab(QWidget):
         """Handle conversion started signal"""
         self.is_converting = True
         
-        # Update UI
         self.train_button.setEnabled(False)
         self.convert_button.setEnabled(False)
         self.progress_bar.setValue(0)
@@ -299,7 +268,6 @@ class TrainTab(QWidget):
         """Handle conversion finished signal"""
         self.is_converting = False
         
-        # Update UI
         self.train_button.setEnabled(True)
         self.convert_button.setEnabled(True)
         self.progress_label.setText(message)
@@ -308,7 +276,6 @@ class TrainTab(QWidget):
             self.log_text.append("Conversion completed successfully!")
             self.main_window.show_status_message("Conversion completed", 3000)
             
-            # Update model status
             self.update_model_status()
         else:
             self.log_text.append(f"Conversion failed: {message}")

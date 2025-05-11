@@ -1,7 +1,6 @@
 from flask import Blueprint, request, jsonify
 from app.services import ResultService
 
-# Create blueprint
 result_bp = Blueprint('results', __name__)
 
 @result_bp.route('', methods=['GET'])

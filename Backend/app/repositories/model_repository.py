@@ -64,13 +64,10 @@ class ModelRepository:
         Returns:
             Created Model object
         """
-        # Secure the filename
         filename = secure_filename(model_file.filename)
         
-        # Generate a unique S3 key
         s3_key = f"models/{metadata.get('project_name', 'unknown')}/{filename}"
         
-        # Upload file to S3
         s3_client = ModelRepository.get_s3_client()
         s3_bucket = current_app.config['S3_BUCKET_NAME']
         
@@ -84,7 +81,6 @@ class ModelRepository:
             current_app.logger.error(f"S3 upload error: {str(e)}")
             raise Exception(f"Failed to upload model to S3: {str(e)}")
         
-        # Create model record in database
         model = Model(
             project_name=metadata.get('project_name', 'Unknown'),
             s3_bucket=s3_bucket,
@@ -113,13 +109,11 @@ class ModelRepository:
         if not model:
             return False
         
-        # Handle device assignments first
         devices = Device.query.filter_by(current_model_id=model_id).all()
         for device in devices:
             device.current_model_id = None
             device.status = 'idle'
         
-        # Soft delete the model
         model.is_active = False
         
         db.session.commit()
@@ -140,13 +134,11 @@ class ModelRepository:
         if not model:
             return False
         
-        # Handle device assignments first
         devices = Device.query.filter_by(current_model_id=model_id).all()
         for device in devices:
             device.current_model_id = None
             device.status = 'idle'
         
-        # Delete the file from S3
         try:
             s3_client = ModelRepository.get_s3_client()
             s3_client.delete_object(
@@ -155,9 +147,7 @@ class ModelRepository:
             )
         except botocore.exceptions.ClientError as e:
             current_app.logger.error(f"S3 deletion error: {str(e)}")
-            # Continue with DB deletion even if S3 deletion fails
         
-        # Delete the model from the database
         db.session.delete(model)
         db.session.commit()
         

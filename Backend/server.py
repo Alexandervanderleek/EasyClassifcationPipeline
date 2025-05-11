@@ -7,9 +7,8 @@ from flask_cors import CORS
 from werkzeug.utils import secure_filename
 
 app = Flask(__name__)
-CORS(app)  # Enable CORS for all routes
+CORS(app) 
 
-# Configuration
 UPLOAD_FOLDER = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'models')
 RESULTS_FOLDER = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'results')
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
@@ -17,9 +16,8 @@ os.makedirs(RESULTS_FOLDER, exist_ok=True)
 
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 app.config['RESULTS_FOLDER'] = RESULTS_FOLDER
-app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16 MB max upload size
+app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024 
 
-# Database (in-memory for simplicity, use a real DB in production)
 models_db = {}
 devices_db = {}
 results_db = {}
@@ -39,18 +37,14 @@ def upload_model():
         return jsonify({'error': 'No selected file'}), 400
         
     try:
-        # Generate a unique ID for the model
         model_id = str(uuid.uuid4())
         
-        # Create a directory for this model
         model_dir = os.path.join(app.config['UPLOAD_FOLDER'], model_id)
         os.makedirs(model_dir, exist_ok=True)
         
-        # Save model file
         model_path = os.path.join(model_dir, secure_filename(model_file.filename))
         model_file.save(model_path)
         
-        # Parse and save metadata
         metadata = json.loads(metadata_file.read().decode('utf-8'))
         metadata['model_id'] = model_id
         metadata['upload_date'] = datetime.datetime.now().isoformat()
@@ -60,7 +54,6 @@ def upload_model():
         with open(metadata_path, 'w') as f:
             json.dump(metadata, f, indent=4)
             
-        # Store in our database
         models_db[model_id] = {
             'metadata': metadata,
             'model_path': model_path,
@@ -180,17 +173,14 @@ def set_device_model(device_id):
     if model_id not in models_db:
         return jsonify({'error': 'Model not found'}), 404
         
-    # Update the device's current model
     old_model_id = devices_db[device_id]['current_model_id']
     devices_db[device_id]['current_model_id'] = model_id
     devices_db[device_id]['last_active'] = datetime.datetime.now().isoformat()
     
-    # Remove device from old model's active devices
     if old_model_id and old_model_id in models_db:
         if device_id in models_db[old_model_id]['active_devices']:
             models_db[old_model_id]['active_devices'].remove(device_id)
     
-    # Add device to new model's active devices
     if device_id not in models_db[model_id]['active_devices']:
         models_db[model_id]['active_devices'].append(device_id)
     
@@ -209,12 +199,10 @@ def device_heartbeat(device_id):
         
     data = request.json or {}
     
-    # Update device status
     devices_db[device_id]['last_active'] = datetime.datetime.now().isoformat()
     if 'status' in data:
         devices_db[device_id]['status'] = data['status']
         
-    # Return the current assigned model
     model_id = devices_db[device_id]['current_model_id']
     should_download = False
     
@@ -258,7 +246,6 @@ def upload_result():
     if model_id not in models_db:
         return jsonify({'error': 'Model not found'}), 404
         
-    # Store the result
     result_id = str(uuid.uuid4())
     timestamp = datetime.datetime.now().isoformat()
     
@@ -271,16 +258,13 @@ def upload_result():
         'timestamp': timestamp,
         'result': data['result'],
         'confidence': data.get('confidence', 0.0),
-        'image_url': None  # We're not storing images in this version
+        'image_url': None 
     }
     
-    # Save to database
     results_db[result_id] = result_data
     
-    # Update device status
     devices_db[device_id]['last_active'] = timestamp
     
-    # Save result to file
     results_dir = os.path.join(app.config['RESULTS_FOLDER'], device_id)
     os.makedirs(results_dir, exist_ok=True)
     
@@ -305,16 +289,13 @@ def list_results():
     
     results = list(results_db.values())
     
-    # Apply filters
     if device_id:
         results = [r for r in results if r['device_id'] == device_id]
     if model_id:
         results = [r for r in results if r['model_id'] == model_id]
         
-    # Sort by timestamp (newest first)
     results.sort(key=lambda x: x['timestamp'], reverse=True)
     
-    # Apply limit
     results = results[:limit]
     
     return jsonify({'results': results})

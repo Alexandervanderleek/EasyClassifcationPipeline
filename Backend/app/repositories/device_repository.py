@@ -119,7 +119,6 @@ class DeviceRepository:
         if not device:
             return False
         
-        # Soft delete the device
         device.is_active = False
         device.status = 'inactive'
         
@@ -141,8 +140,6 @@ class DeviceRepository:
         if not device:
             return False
         
-        # Note: This will not delete related results due to foreign key constraints
-        # Consider soft delete instead to preserve data integrity
         db.session.delete(device)
         db.session.commit()
         

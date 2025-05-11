@@ -68,7 +68,6 @@ class DeviceService:
             Success message or error
         """
         try:
-            # Verify model exists if model_id is provided
             if model_id and not ModelRepository.get_by_id(model_id):
                 return {
                     'success': False,
@@ -114,7 +113,6 @@ class DeviceService:
                     'error': 'Device not found'
                 }
             
-            # Get model info if assigned
             model_id = device.current_model_id
             model = None
             should_download = False
@@ -128,7 +126,7 @@ class DeviceService:
             return {
                 'model_id': str(model_id) if model_id else None,
                 'should_download': should_download,
-                'metadata': model_data['metadata'] if model_data else None  # Correctly access the metadata
+                'metadata': model_data['metadata'] if model_data else None  
             }
         except Exception as e:
             current_app.logger.error(f"Error updating heartbeat: {str(e)}")

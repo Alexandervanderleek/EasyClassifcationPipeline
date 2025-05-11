@@ -43,10 +43,8 @@ class ModelService:
             Created model as dictionary or error message
         """
         try:
-            # Parse metadata
             metadata = json.loads(metadata_file.read().decode('utf-8'))
             
-            # Create model
             model = ModelRepository.create(model_file, metadata)
             
             return {
@@ -118,5 +116,5 @@ class ModelService:
         return {
             'success': True,
             'download_url': url,
-            'expires_in': 3600  # Seconds
+            'expires_in': 3600 
         }

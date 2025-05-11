@@ -4,10 +4,10 @@ class WorkerSignals(QObject):
     """
     Defines the signals available from a running worker thread.
     """
-    started = Signal(str)  # endpoint
-    finished = Signal(str, bool, object)  # endpoint, success, data
-    error = Signal(str, str)  # endpoint, error_message
-    progress = Signal(int, int)  # current, total
+    started = Signal(str) 
+    finished = Signal(str, bool, object)  
+    error = Signal(str, str)  
+    progress = Signal(int, int)
 
 class ApiWorker(QRunnable):
     """Worker that handles API requests in a separate thread"""
@@ -27,18 +27,14 @@ class ApiWorker(QRunnable):
         try:
             self.signals.started.emit(self.endpoint)
             
-            # Get the method from the api_service
             method = getattr(self.api_service, self.method_name)
             
-            # Call the method with the provided arguments
             result = method(*self.args, **self.kwargs)
             
-            # Check if it's a success
             success = True
             if isinstance(result, dict) and result.get('error_type'):
                 success = False
             
-            # Emit the result
             self.signals.finished.emit(self.endpoint, success, result)
             
         except Exception as e:

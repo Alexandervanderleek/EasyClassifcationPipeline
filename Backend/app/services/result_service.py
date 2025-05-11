@@ -50,10 +50,8 @@ class ResultService:
             Created result as dictionary or error message
         """
         try:
-            # Prepare metadata
             metadata = additional_data if additional_data else {}
             
-            # Create result
             result = ResultRepository.create(
                 device_id=device_id,
                 model_id=model_id,
@@ -68,7 +66,6 @@ class ResultService:
                     'error': 'Device or model not found'
                 }
             
-            # Update device last active timestamp
             DeviceRepository.update_heartbeat(device_id)
             
             return {

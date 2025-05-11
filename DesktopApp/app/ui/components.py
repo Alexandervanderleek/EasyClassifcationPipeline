@@ -1,5 +1,3 @@
-# Add this to app/ui/components.py (create this file)
-
 from PySide6.QtWidgets import QWidget, QLabel, QVBoxLayout, QGraphicsOpacityEffect
 from PySide6.QtCore import Qt, QPropertyAnimation, QTimer, Property
 from PySide6.QtGui import QPainter, QColor
@@ -13,20 +11,16 @@ class LoadingOverlay(QWidget):
     def __init__(self, parent=None, message="Loading..."):
         super().__init__(parent)
         
-        # Set up the overlay
         self.setWindowFlags(Qt.FramelessWindowHint)
         self.setAttribute(Qt.WA_TranslucentBackground)
         self.setAttribute(Qt.WA_TransparentForMouseEvents)
         
-        # Create layout
         layout = QVBoxLayout(self)
         layout.setAlignment(Qt.AlignCenter)
         
-        # Create spinner widget
         self.spinner = SpinnerWidget(self)
         layout.addWidget(self.spinner, 0, Qt.AlignCenter)
         
-        # Create message label
         self.message_label = QLabel(message)
         self.message_label.setStyleSheet("""
             color: white;
@@ -37,12 +31,10 @@ class LoadingOverlay(QWidget):
         self.message_label.setAlignment(Qt.AlignCenter)
         layout.addWidget(self.message_label)
         
-        # Set up opacity effect
         self.opacity_effect = QGraphicsOpacityEffect(self)
         self.opacity_effect.setOpacity(0.8)
         self.setGraphicsEffect(self.opacity_effect)
         
-        # Hide initially
         self.hide()
     
     def set_message(self, message):
@@ -65,7 +57,7 @@ class LoadingOverlay(QWidget):
         """Paint the semi-transparent background"""
         painter = QPainter(self)
         painter.setRenderHint(QPainter.Antialiasing)
-        painter.setBrush(QColor(0, 0, 0, 150))  # Semi-transparent black
+        painter.setBrush(QColor(0, 0, 0, 150)) 
         painter.setPen(Qt.NoPen)
         painter.drawRect(self.rect())
         super().paintEvent(event)
@@ -82,7 +74,7 @@ class SpinnerWidget(QWidget):
         self._angle = 0
         self._timer = QTimer(self)
         self._timer.timeout.connect(self._rotate)
-        self._speed = 80  # ms
+        self._speed = 80  
     
     def _get_angle(self):
         return self._angle
@@ -114,7 +106,6 @@ class SpinnerWidget(QWidget):
         painter.rotate(self._angle)
         
         for i in range(8):
-            # Vary opacity based on position
             opacity = (i + 1) / 8.0
             painter.setPen(Qt.NoPen)
             painter.setBrush(QColor(255, 255, 255, int(opacity * 255)))

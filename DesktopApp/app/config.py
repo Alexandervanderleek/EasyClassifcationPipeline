@@ -1,6 +1,3 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-
 """
 Application configuration and settings
 """
@@ -13,24 +10,20 @@ class AppConfig:
     """Handles application configuration and settings"""
     
     def __init__(self):
-        # Default configuration values
-        self.api_endpoint = ""  # Empty by default to trigger first run dialog
-        self.api_key = ""  # Empty by default to trigger first run dialog
+        self.api_endpoint = ""
+        self.api_key = ""
         self.camera_index = 0
         self.default_project_name = "my_classifier"
         self.default_epochs = 10
         self.default_batch_size = 32
         self.default_learning_rate = 0.0001
         
-        # Paths
         self.user_home = str(Path.home())
         self.base_dir = os.path.join(self.user_home, "classifier_projects")
         self.config_file = os.path.join(self.user_home, ".classifier_config.json")
         
-        # Create base directory if it doesn't exist
         os.makedirs(self.base_dir, exist_ok=True)
         
-        # Load saved configuration if available
         self.load_config()
     
     def load_config(self):
@@ -40,7 +33,6 @@ class AppConfig:
                 with open(self.config_file, 'r') as f:
                     config_data = json.load(f)
                 
-                # Update configuration
                 for key, value in config_data.items():
                     if hasattr(self, key):
                         setattr(self, key, value)
@@ -74,11 +66,9 @@ class AppConfig:
     
     def is_first_run(self):
         """Check if this is the first run of the application"""
-        # If config file doesn't exist, definitely first run
         if not os.path.exists(self.config_file):
             return True
         
-        # If API endpoint or key is empty, consider it a first run
         return not (self.api_endpoint and self.api_key)
     
     def update_credentials(self, api_url, api_key):

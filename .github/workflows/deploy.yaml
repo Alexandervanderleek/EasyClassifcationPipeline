@@ -1,16 +1,10 @@
 name: Deploy Backend to AWS
 
 on:
-  push:
-    branches:
-      - main
-    paths:
-      - "Backend/**" # Only trigger on changes to Backend directory
-      - ".github/workflows/deploy.yml" # Or changes to this workflow
-  workflow_dispatch: # Allow manual trigger regardless of changed files
+  workflow_dispatch:
 
 env:
-  AWS_REGION: eu-west-1 # Updated to match your region
+  AWS_REGION: eu-west-1
   EB_APP_NAME: ${{ vars.EB_APP_NAME }}
   EB_ENV_NAME: ${{ vars.EB_ENV_NAME }}
   DEPLOY_PACKAGE_NAME: "classifier-api-${{ github.sha }}.zip"

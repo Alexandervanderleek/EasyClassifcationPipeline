@@ -29,10 +29,8 @@ class ResultRepository:
         if model_id:
             query = query.filter(Result.model_id == model_id)
         
-        # Order by timestamp (newest first)
         query = query.order_by(Result.timestamp.desc())
         
-        # Apply limit
         if limit:
             query = query.limit(limit)
         
@@ -66,14 +64,12 @@ class ResultRepository:
         Returns:
             Created Result object
         """
-        # Verify that device and model exist and are active
         device = Device.query.filter_by(device_id=device_id, is_active=True).first()
         model = Model.query.filter_by(model_id=model_id, is_active=True).first()
         
         if not device or not model:
             return None
         
-        # Create result
         result = Result(
             device_id=device_id,
             model_id=model_id,
@@ -82,7 +78,6 @@ class ResultRepository:
             result_metadata=metadata
         )
         
-        # Update device last_active time
         device.last_active = datetime.utcnow()
         
         db.session.add(result)

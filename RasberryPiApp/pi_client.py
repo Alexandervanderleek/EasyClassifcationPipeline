@@ -12,7 +12,6 @@ import tflite_runtime.interpreter as tflite
 import cv2
 from datetime import datetime
 
-# Configure logging
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
@@ -33,19 +32,16 @@ class PiClassifier:
         
         self.device_name = device_name or f"Pi-{hex(uuid.getnode())[2:]}"
         self.device_id = self._load_or_register_device()
-        self.capture_interval = capture_interval  # seconds between captures
+        self.capture_interval = capture_interval 
         self.confidence_threshold = confidence_threshold
         
-        # Paths
         self.base_dir = os.path.dirname(os.path.abspath(__file__))
         self.models_dir = os.path.join(self.base_dir, "models")
         self.images_dir = os.path.join(self.base_dir, "images")
         
-        # Create directories
         os.makedirs(self.models_dir, exist_ok=True)
         os.makedirs(self.images_dir, exist_ok=True)
         
-        # State
         self.current_model_id = None
         self.current_model_path = None
         self.current_metadata = None
@@ -53,7 +49,6 @@ class PiClassifier:
         self.is_running = False
         self.camera = None
         
-        # Load current model if available
         self._load_current_model()
         
     def _load_or_register_device(self):
@@ -71,7 +66,6 @@ class PiClassifier:
             except Exception as e:
                 logger.error(f"Error loading device ID: {str(e)}")
                 
-        # Register new device
         try:
             response = requests.post(
                 f"{self.api_url}/api/devices/register",
@@ -82,7 +76,6 @@ class PiClassifier:
             if response.status_code == 200:
                 device_id = response.json()['device_id']
                 
-                # Save device ID
                 with open(device_file, 'w') as f:
                     json.dump({
                         "device_id": device_id,
@@ -114,7 +107,6 @@ class PiClassifier:
                     self.current_model_path = data['model_path']
                     self.current_metadata = data['metadata']
                     
-                    # Check if model file exists
                     if os.path.exists(self.current_model_path):
                         self._load_interpreter()
                         logger.info(f"Loaded existing model: {self.current_model_id}")
@@ -159,7 +151,6 @@ class PiClassifier:
             if response.status_code == 200:
                 data = response.json()
                 
-                # Check if we need to download a new model
                 if data['should_download'] and data['model_id'] != self.current_model_id:
                     logger.info(f"New model available: {data['model_id']}")
                     self._download_model(data['model_id'], data['metadata'])
@@ -175,18 +166,15 @@ class PiClassifier:
         Download a model from the server
         """
         try:
-            # Create model directory
             model_dir = os.path.join(self.models_dir, model_id)
             os.makedirs(model_dir, exist_ok=True)
             
-            # First, get the download URL
             response = requests.get(f"{self.api_url}/api/models/{model_id}/download")
             
             if response.status_code != 200:
                 logger.error(f"Error getting download URL: {response.text}")
                 return False
                 
-            # Parse the JSON response to get the download URL
             response_data = response.json()
             
             if not response_data.get('success'):
@@ -201,14 +189,12 @@ class PiClassifier:
             
             logger.info(f"Got pre-signed download URL, expires in {response_data.get('expires_in', 'unknown')} seconds")
                 
-            # Now download the actual model file using the pre-signed URL
             model_response = requests.get(download_url, stream=True)
             
             if model_response.status_code != 200:
                 logger.error(f"Error downloading model from URL: {model_response.status_code}")
                 return False
                 
-            # Use a standard filename based on the model ID
             model_filename = f"model_{model_id}.tflite"
             model_path = os.path.join(model_dir, model_filename)
             
@@ -218,17 +204,14 @@ class PiClassifier:
                     
             logger.info(f"Model file downloaded and saved to {model_path}")
                     
-            # Save metadata
             metadata_path = os.path.join(model_dir, "metadata.json")
             with open(metadata_path, 'w') as f:
                 json.dump(metadata, f, indent=4)
                 
-            # Update current model info
             self.current_model_id = model_id
             self.current_model_path = model_path
             self.current_metadata = metadata
             
-            # Save current model info
             with open(os.path.join(self.base_dir, "current_model.json"), 'w') as f:
                 json.dump({
                     "model_id": model_id,
@@ -236,7 +219,6 @@ class PiClassifier:
                     "metadata": metadata
                 }, f, indent=4)
                 
-            # Load interpreter
             success = self._load_interpreter()
             
             if success:
@@ -259,54 +241,44 @@ class PiClassifier:
             return None
             
         try:
-            # Capture image from camera
             ret, frame = self.camera.read()
             
             if not ret:
                 logger.error("Failed to capture image from camera")
                 return None
                 
-            # Save the image
             timestamp = int(time.time())
             img_path = os.path.join(self.images_dir, f"img_{timestamp}.jpg")
             cv2.imwrite(img_path, frame)
             
-            # Preprocess the image
             img = Image.open(img_path).resize((224, 224))
             img_array = np.array(img, dtype=np.float32)
             img_array = img_array / 255.0  # Normalize
             img_array = np.expand_dims(img_array, axis=0)
             
-            # Get interpreter details
             input_details = self.interpreter.get_input_details()
             output_details = self.interpreter.get_output_details()
             
-            # Set input tensor
             self.interpreter.set_tensor(input_details[0]['index'], img_array)
             
-            # Run inference
             self.interpreter.invoke()
             
-            # Get output tensor
             prediction = self.interpreter.get_tensor(output_details[0]['index'])
             
-            # Get class names from metadata
             if self.current_metadata and 'classes' in self.current_metadata:
                 classes = self.current_metadata['classes']
             else:
                 classes = ["negative", "positive"]
                 
-            # Interpret result
             if prediction[0][0] > 0.5:
-                result = classes[1]  # Usually "positive"
+                result = classes[1] 
                 confidence = float(prediction[0][0])
             else:
-                result = classes[0]  # Usually "negative"
+                result = classes[0]
                 confidence = 1 - float(prediction[0][0])
                 
             logger.info(f"Classification result: {result} (Confidence: {confidence:.2f})")
             
-            # Upload result to server if confidence meets threshold
             if confidence >= self.confidence_threshold:
                 self._upload_result(result, confidence, img_path)
                 
@@ -359,7 +331,6 @@ class PiClassifier:
             logger.warning("Classification loop already running")
             return
             
-        # Initialize camera
         try:
             self.camera = cv2.VideoCapture(0)
             if not self.camera.isOpened():
@@ -369,7 +340,6 @@ class PiClassifier:
             logger.error(f"Error initializing camera: {str(e)}")
             return
             
-        # Start classification loop in a separate thread
         self.is_running = True
         threading.Thread(target=self._classification_loop, daemon=True).start()
         logger.info("Classification loop started")
@@ -389,15 +359,11 @@ class PiClassifier:
         Main classification loop
         """
         while self.is_running:
-            # Send heartbeat
             self.heartbeat()
             
-            # Check if we have a model
             if self.interpreter:
-                # Capture and classify
                 self.capture_and_classify()
                 
-            # Wait for the next interval
             time.sleep(self.capture_interval)           
 def main():
     """
@@ -412,7 +378,6 @@ def main():
 
     args = parser.parse_args()
     
-    # Create and start the classifier
     classifier = PiClassifier(
         api_url=args.api,
         api_key=args.apikey,
@@ -424,7 +389,6 @@ def main():
     try:
         classifier.start()
         
-        # Keep the main thread alive
         while True:
             time.sleep(1)
             

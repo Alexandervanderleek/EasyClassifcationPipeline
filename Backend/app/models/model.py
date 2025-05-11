@@ -7,27 +7,20 @@ class Model(db.Model):
     """Model representing a machine learning model"""
     __tablename__ = 'models'
     
-    # Primary key
     model_id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     
-    # Model information
     project_name = db.Column(db.String(255), nullable=False)
     upload_date = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
     
-    # S3 storage information
     s3_bucket = db.Column(db.String(255), nullable=False)
     s3_key = db.Column(db.String(1024), nullable=False)
     
-    # Original filename 
     original_filename = db.Column(db.String(255), nullable=False)
     
-    # Additional metadata stored as JSON
     model_metadata = db.Column(JSONB, nullable=True)
     
-    # Soft delete flag
     is_active = db.Column(db.Boolean, default=True, nullable=False)
     
-    # Relationships
     devices = db.relationship('Device', back_populates='model', lazy='dynamic')
     results = db.relationship('Result', back_populates='model', lazy='dynamic')
     
