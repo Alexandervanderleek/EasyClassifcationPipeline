@@ -50,9 +50,7 @@ chown admin:admin "$INSTALL_DIR"
 
 echo -e "\n${GREEN}Downloading classifier scripts...${NC}"
 
-# If downloading from the web:
-# wget -O "$INSTALL_DIR/pi_client.py" https://your-repo/pi_client.py
-# wget -O "$INSTALL_DIR/classifier.service" https://your-repo/classifier.service
+wget -O "$INSTALL_DIR/pi_client.py" https://github.com/Alexandervanderleek/EasyClassifcationPipeline/tree/main/RasberryPiApp/pi_client.py
 
 mkdir -p "$INSTALL_DIR/models"
 mkdir -p "$INSTALL_DIR/images"
